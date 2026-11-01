@@ -1,0 +1,52 @@
+/* Seu mês. Só usa tokens de tokens.css. Verde/vermelho só na variação; a posição e o texto carregam o sentido. */
+#view > * { min-width: 0; }
+.sm-mes { display: flex; align-items: center; justify-content: center; gap: var(--s2); }
+.sm-mes__txt { min-width: 11em; text-align: center; font-size: var(--fs-lg); font-weight: 700; }
+.sm-mes__txt::first-letter { text-transform: uppercase; }
+.sm-seta { width: 44px; height: 44px; }
+.sm-seta--ant .ico { transform: scaleX(-1); }
+.sm-seta[disabled] { opacity: .35; cursor: not-allowed; }
+
+.sm-avisos { display: grid; gap: var(--s2); }
+.sm-avisos .notice { flex-wrap: wrap; }
+
+.sm-cards { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); }
+.sm-card { display: grid; gap: var(--s1); align-content: start; }
+.sm-h { font-size: var(--fs-md); font-weight: 700; margin-bottom: var(--s1); }
+.sm-v { font-size: var(--fs-xl); font-weight: 700; line-height: 1.15; letter-spacing: -.01em; }
+.sm-ev, .sm-card p:not(.sm-v) { font-size: var(--fs-sm); }
+.sm-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s1); font-size: var(--fs-sm); }
+.sm-lista li { display: flex; justify-content: space-between; gap: var(--s3); }
+.sm-nota { font-size: var(--fs-sm); }
+.sm-cards + .sm-nota { margin-top: var(--s2); }
+.sm-skeleton, .sm-sk { height: 120px; border-radius: var(--r-lg); }
+
+/* marco novo: cartão calmo, sem cor de destaque nem movimento */
+.sm-marco { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s3); background: var(--brand-soft); border-color: var(--brand); }
+.sm-marco__t { font-weight: 600; flex: 1 1 14em; }
+.sm-caminho ul { margin: 0; padding-left: var(--s5); display: grid; gap: var(--s1); font-size: var(--fs-sm); color: var(--muted); }
+
+/* gráfico: linha cheia = patrimônio, tracejada = investido (a cor não é o único sinal) */
+.sm-graf .chart { height: 120px; margin-top: var(--s2); }
+.chart path.line.inv { stroke: var(--muted); stroke-dasharray: 6 4; stroke-width: 2; }
+.sm-graf__eixo { display: flex; justify-content: space-between; font-size: var(--fs-xs); }
+.sm-leg { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); font-size: var(--fs-sm); margin-top: var(--s2); }
+.sm-leg span { display: inline-flex; align-items: center; gap: var(--s2); }
+.sm-leg i { display: inline-block; width: 24px; height: 0; border-top: 2px solid var(--brand); }
+.sm-leg .sm-leg__b { border-top: 2px dashed var(--muted); }
+.sm-det { margin-top: var(--s3); font-size: var(--fs-sm); }
+.sm-det summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--brand); font-weight: 600; }
+.sm-tab { overflow-x: auto; }
+.sm-tab table { width: 100%; border-collapse: collapse; }
+.sm-tab th, .sm-tab td { text-align: right; padding: var(--s1) var(--s2); border-bottom: 1px solid var(--border); }
+.sm-tab th:first-child { text-align: left; }
+
+/* alvos x realidade */
+.sm-alvos { list-style: none; margin: var(--s3) 0 0; padding: 0; display: grid; gap: var(--s4); }
+.sm-alvo { display: grid; gap: var(--s1); font-size: var(--fs-sm); }
+.sm-alvo__top { display: flex; justify-content: space-between; gap: var(--s3); }
+.sm-bar { position: relative; height: 8px; border-radius: var(--r-pill); background: var(--surface-2); overflow: visible; }
+.sm-bar i { position: absolute; inset: 0 auto 0 0; border-radius: var(--r-pill); background: var(--brand); }
+.sm-bar b { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1px; border-radius: 2px; background: var(--text); }
+
+.sm-fonte { padding-bottom: var(--s2); }

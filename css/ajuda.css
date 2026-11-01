@@ -1,0 +1,19 @@
+/* Botão "?" e painel de ajuda. Só tokens. */
+.ajuda-btn {
+  position: relative; display: inline-grid; place-items: center; vertical-align: middle;
+  min-width: 44px; min-height: 44px; margin: -14px -10px; padding: 0; border: 0; background: none; color: var(--muted); cursor: pointer;
+}
+.ajuda-btn > span {
+  display: grid; place-items: center; width: 20px; height: 20px; border: 1px solid var(--border); border-radius: var(--r-pill);
+  font: 600 var(--fs-xs)/1 var(--font); background: var(--surface-2); transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.ajuda-btn:hover > span { background: var(--brand-soft); color: var(--brand); }
+.ajuda-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: -4px; border-radius: var(--r-pill); }
+.ajuda { display: grid; gap: var(--s3); font-size: var(--fs-md); line-height: 1.5; overflow-wrap: anywhere; }
+.ajuda p { margin: 0; }
+.ajuda__ex, .ajuda__ler { background: var(--surface-2); border-radius: var(--r-sm); padding: var(--s3); }
+.ajuda__aviso { color: var(--muted); font-size: var(--fs-sm); }
+/* dentro de outro dialog: cobre o próprio contêiner */
+.ajuda-cobertura { position: absolute; inset: 0; z-index: 1; background: var(--surface); overflow: auto; padding-bottom: var(--s6); }
+.ajuda-cobertura > .ajuda { padding: var(--s2) var(--s5); }
+@media (prefers-reduced-motion: reduce) { .ajuda-btn > span { transition: none; } }

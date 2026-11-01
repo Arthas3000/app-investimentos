@@ -1,0 +1,73 @@
+/* Home e painel de registrar movimentação (js/ui/registrar.js). Só usa tokens de tokens.css. */
+#view > * { min-width: 0; }
+.home-h { font-size: var(--fs-md); font-weight: 700; margin-bottom: var(--s2); }
+.home-avisos { display: grid; gap: var(--s2); }
+.home-avisos:empty { display: none; }
+.home-avisos .notice { flex-wrap: wrap; }
+.home-avisos .notice a { color: inherit; font-weight: 600; }
+.home-fim { padding-bottom: calc(var(--s12) + var(--s4)); } /* o botão + flutuante não cobre a última linha */
+
+/* saldo: sobre o fundo da marca não se usa verde/vermelho; o sinal (+/−) carrega o sentido */
+.balance__sub strong { font-weight: 600; }
+.balance__value.is-loading { min-height: 1.1em; width: 60%; border-radius: var(--r-sm); background: rgb(255 255 255 / .22); }
+
+/* lista dos meus ativos */
+.home-row { grid-template-columns: 40px minmax(0, 1fr) auto; align-items: start; }
+.home-row__meta { display: block; font-size: var(--fs-xs); color: var(--muted); line-height: 1.5; margin-top: 2px; }
+.home-row__meta .mkt-mark { margin-left: var(--s1); vertical-align: middle; }
+.home-row .asset-row__end { align-content: start; gap: var(--s1); }
+.home-sk { width: 72px; height: 18px; }
+.home-sk--s { width: 48px; height: 14px; }
+.home-desde .an__list { margin-top: var(--s2); }
+.home-desde p + p, .home-desde .an__list + p { margin-top: var(--s2); }
+
+/* primeiros passos */
+.home-passos { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s3); }
+.passo { display: grid; gap: var(--s3); padding: var(--s4); }
+.passo__top { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); }
+.passo h3 { font-size: var(--fs-md); }
+.passo p { font-size: var(--fs-sm); color: var(--muted); }
+.home-ol { margin: 0; padding-left: var(--s5); font-size: var(--fs-sm); display: grid; gap: var(--s1); }
+.home-btns { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.home-aporte { display: grid; gap: var(--s3); }
+.home-aporte .field__error { margin: 0; }
+
+/* botão + flutuante: acima da barra inferior no celular, no canto no computador */
+.fab {
+  position: fixed; right: var(--s4); bottom: calc(56px + var(--s4) + env(safe-area-inset-bottom)); z-index: 15;
+  width: 56px; height: 56px; display: grid; place-items: center; border: 0; border-radius: var(--r-pill);
+  background: var(--brand); color: var(--on-brand); box-shadow: var(--shadow-2);
+  transition: transform var(--dur-fast) var(--ease);
+}
+.fab:active { transform: scale(.94); }
+@media (min-width: 900px) { .fab { bottom: var(--s6); right: var(--s6); } }
+
+/* painel de registrar */
+.reg, .reg__campos { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s4); }
+.reg__duo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: var(--s3); }
+.reg__total { font-size: var(--fs-sm); font-weight: 600; min-height: 1.5em; }
+.reg__total:empty { display: none; }
+#regErros:empty { display: none; }
+.reg-sug { list-style: none; margin: 0; padding: var(--s1); display: grid; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); }
+.reg-sug__item {
+  width: 100%; min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: var(--s3);
+  padding: 0 var(--s3); border: 0; border-radius: var(--r-sm); background: transparent; text-align: left;
+}
+.reg-sug__item:hover, .reg-sug__item:focus-visible { background: var(--surface-2); }
+.reg-sug__nome { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reg-sug__nome .muted { font-size: var(--fs-sm); }
+
+@media (max-width: 420px) {
+  .reg__duo { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fab:active { transform: none; }
+}
+
+/* estado vazio da Home: título é h2 aqui, e o ícone do botão herda a cor do botão */
+.empty h2 { color: var(--text); font-size: var(--fs-lg); }
+.empty .btn .ico { color: inherit; }
+
+/* o botão de confirmar fica visível mesmo com o teclado e os campos ocupando a tela */
+.reg #regOk { position: sticky; bottom: 0; box-shadow: 0 0 0 var(--s2) var(--surface); }
+.home-desde .muted { font-size: var(--fs-sm); }

@@ -1,0 +1,89 @@
+/* Assistente de aporte (#aporte) e cartão do aporte na Home. Só usa tokens de tokens.css. */
+#apTopo, #apCorpo { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s4); align-content: start; min-width: 0; }
+#apTopo { gap: 0; }
+.ap-h { font-size: var(--fs-lg); }
+.ap-h:focus { outline: none; }
+.ap-card { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s3); padding: var(--s4); }
+.ap-card h3 { font-size: var(--fs-md); }
+.ap-card p { font-size: var(--fs-sm); }
+.ap-avisos { display: grid; gap: var(--s2); }
+.ap-avisos:empty { display: none; }
+.ap-avisos .notice { flex-wrap: wrap; }
+.ap-edu { font-size: var(--fs-sm); color: var(--muted); background: var(--surface-2); border-left: 4px solid var(--muted); border-radius: var(--r-sm); padding: var(--s3) var(--s4); }
+
+/* indicador de progresso */
+.ap-prog { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s2); }
+.ap-prog li { display: grid; justify-items: center; gap: var(--s1); font-size: var(--fs-sm); color: var(--muted); text-align: center; position: relative; padding-bottom: var(--s3); }
+.ap-prog li::before { content: ""; position: absolute; top: 15px; left: calc(-50% + 18px); right: calc(50% + 18px); height: 2px; background: var(--border); }
+.ap-prog li:first-child::before { display: none; }
+.ap-prog li.is-feito::before, .ap-prog li[aria-current="step"]::before { background: var(--brand); }
+.ap-prog__n { width: 32px; height: 32px; border-radius: var(--r-pill); display: grid; place-items: center; font-weight: 700; background: var(--surface-2); color: var(--muted); border: 2px solid var(--border); position: relative; }
+.ap-prog li[aria-current="step"] { color: var(--text); font-weight: 700; }
+.ap-prog li[aria-current="step"] .ap-prog__n { background: var(--brand); color: var(--on-brand); border-color: var(--brand); }
+.ap-prog li.is-feito .ap-prog__n { background: var(--brand-soft); color: var(--brand); border-color: var(--brand); }
+
+/* passo 1: alvos */
+.ap-alvos { list-style: none; margin: 0; padding: 0; display: grid; }
+.ap-alvo { display: grid; grid-template-columns: minmax(0, 1fr) 104px; gap: var(--s3); align-items: center; padding: var(--s3) 0; border-top: 1px solid var(--border); }
+.ap-alvo:first-child { border-top: 0; }
+.ap-alvo__id { display: grid; gap: 2px; min-width: 0; }
+.ap-alvo__cod { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
+.ap-alvo__meta { font-size: var(--fs-xs); color: var(--muted); }
+.ap-pct { position: relative; }
+.ap-pct input { padding-right: 32px; text-align: right; }
+.ap-pct > span { position: absolute; right: var(--s3); top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.ap-soma { font-size: var(--fs-sm); display: grid; gap: var(--s1); }
+.ap-soma__ajuda { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s1) var(--s2); color: var(--muted); }
+.ap-soma__ajuda .ico { color: var(--brand); }
+.ap-legenda { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); color: var(--muted); }
+.field input[type="range"] { min-height: 44px; padding: 0; border: 0; background: transparent; accent-color: var(--brand); }
+.ap-check { display: flex; align-items: center; gap: var(--s3); min-height: 48px; font-size: var(--fs-sm); }
+.ap-check input { width: 24px; height: 24px; flex: none; accent-color: var(--brand); }
+
+/* botões de rodapé */
+.ap-acoes { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s3); }
+.ap-acoes--um { grid-template-columns: minmax(0, 1fr); }
+#apErros:empty { display: none; }
+
+/* passo 2: linhas da proposta */
+.ap-lins { list-style: none; margin: 0; padding: 0; display: grid; }
+.ap-lin { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s3); align-items: start; padding: var(--s3) 0; border-top: 1px solid var(--border); }
+.ap-lin:first-child { border-top: 0; }
+.ap-lin__txt { display: grid; gap: 2px; min-width: 0; }
+.ap-lin__cod { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; font-size: var(--fs-md) !important; }
+.ap-lin__peso, .ap-lin__motivo { font-size: var(--fs-xs) !important; }
+.ap-step { display: grid; grid-template-columns: 44px 32px 44px; align-items: center; justify-items: center; }
+.ap-step .icon-btn { border: 1px solid var(--border); }
+.ap-step .icon-btn[disabled] { opacity: .4; cursor: not-allowed; }
+.ap-step output { font-weight: 700; min-width: 2ch; text-align: center; }
+.ap-sem summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 600; font-size: var(--fs-sm); }
+.ap-sem[open] > summary { margin-bottom: var(--s2); }
+.ap-card .kv dd.num { font-size: var(--fs-md); }
+.ap-card .notice { margin: 0; }
+
+/* passo 3 */
+.ap-sub { color: var(--muted); }
+
+/* conclusão: calma e curta; sem confete, sem pontos */
+.ap-feito { display: grid; justify-items: center; gap: var(--s3); text-align: center; padding: var(--s6) var(--s2); animation: ap-in var(--dur-slow) var(--ease) both; }
+.ap-feito__check { width: 72px; height: 72px; color: var(--brand); }
+.ap-feito__check circle { fill: var(--brand-soft); animation: ap-in var(--dur-slow) var(--ease) both; }
+.ap-feito__check path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: ap-draw 500ms 150ms var(--ease) forwards; }
+.ap-pesos { list-style: none; margin: 0; padding: 0; width: 100%; display: grid; text-align: left; font-size: var(--fs-sm); }
+.ap-pesos li { display: flex; justify-content: space-between; gap: var(--s3); padding: var(--s2) 0; border-top: 1px solid var(--border); }
+@keyframes ap-in { from { opacity: 0; transform: translateY(6px); } }
+@keyframes ap-draw { to { stroke-dashoffset: 0; } }
+
+/* cartão na Home */
+.ap-home { display: grid; gap: var(--s3); }
+.ap-home .home-h { margin: 0; }
+.ap-home p { font-size: var(--fs-sm); }
+.ap-home .ico { vertical-align: -3px; }
+.ap-home--calmo { background: var(--surface-2); box-shadow: none; padding: var(--s4); }
+
+@media (max-width: 420px) { .ap-acoes { grid-template-columns: minmax(0, 1fr); } .ap-acoes .btn { width: 100%; } }
+@media (prefers-reduced-motion: reduce) {
+  .ap-feito, .ap-feito__check circle { animation: ap-fade 200ms linear both; }
+  .ap-feito__check path { animation: none; stroke-dashoffset: 0; }
+}
+@keyframes ap-fade { from { opacity: 0; } }

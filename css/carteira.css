@@ -1,0 +1,62 @@
+/* Carteira. Só tokens de tokens.css; componentes (card, kv, bar, badge, field, notice, empty) vêm de components.css. */
+#sAvisos:empty, #sMeus:empty, #sAcomp:empty, #sRenda:empty, #sMetas:empty, #sRisco:empty, #sFim:empty { display: none; }
+.sec { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s3); align-content: start; }
+.sec h2 { font-size: var(--fs-lg); }
+.sec__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); flex-wrap: wrap; }
+.sec__head .muted { font-size: var(--fs-sm); }
+.sec__nota { font-size: var(--fs-sm); }
+.sec__acoes { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.sec__lista { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s3); }
+.vazio-in { display: flex; gap: var(--s3); align-items: flex-start; color: var(--muted); }
+.vazio-in .ico { color: var(--brand); }
+.vazio-in p { font-size: var(--fs-sm); }
+.sec .btn { align-self: start; justify-self: start; }
+a.btn { text-decoration: none; }
+
+/* cartão de um ativo */
+.pos { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s3); padding: var(--s4); }
+.pos__top { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s3); }
+.pos__id { display: grid; gap: 2px; min-width: 0; color: inherit; text-decoration: none; min-height: 44px; align-content: center; }
+.pos__id strong { display: inline-flex; align-items: center; gap: var(--s2); font-size: var(--fs-md); }
+.pos__id:hover strong { text-decoration: underline; }
+.pos__nome { font-size: var(--fs-sm); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pos__val { display: grid; justify-items: end; gap: 2px; text-align: right; flex: none; }
+.pos__valor { font-weight: 700; font-size: var(--fs-lg); }
+.pos__val .muted { font-size: var(--fs-sm); }
+.pos__selos { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; font-size: var(--fs-sm); min-height: 24px; }
+.pos__sk { display: inline-block; width: 96px; height: 20px; }
+.pos__kv { margin: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pos__kv dd { font-size: var(--fs-sm); }
+.pos__kv dd.num { white-space: normal; }
+.pos__kv .badge { margin-top: var(--s1); white-space: normal; }
+.pos--consulta { border-style: dashed; }
+.pos__alvo { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr); gap: var(--s3); align-items: end; }
+.pos__dist { font-size: var(--fs-sm); padding-bottom: var(--s3); }
+.pos__alvo .field__error { grid-column: 1 / -1; }
+.pos-aviso { background: var(--surface-2); border-left: 4px solid var(--muted); box-shadow: none; display: grid; gap: var(--s2); }
+.pos-aviso p { font-size: var(--fs-sm); }
+
+/* renda, metas, risco */
+.renda__graf { width: 100%; max-width: 480px; height: auto; display: block; }
+.meta { display: grid; gap: var(--s2); }
+.meta p, .sec p { font-size: var(--fs-sm); }
+.sec .src { font-size: var(--fs-xs); }
+.rk { display: grid; gap: var(--s2); }
+.rk h3 { font-size: var(--fs-md); }
+.det summary { min-height: 44px; display: flex; align-items: center; gap: var(--s2); cursor: pointer; font-weight: 600; font-size: var(--fs-sm); list-style: none; }
+.det summary::-webkit-details-marker { display: none; }
+.det summary::before { content: "▸"; color: var(--muted); }
+.det[open] > summary::before { content: "▾"; }
+.det__lista { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s1); font-size: var(--fs-sm); }
+.det__lista li { display: flex; justify-content: space-between; gap: var(--s3); border-bottom: 1px solid var(--border); padding: var(--s1) 0; }
+.det__texto { margin: 0; padding-left: var(--s5); display: grid; gap: var(--s2); font-size: var(--fs-sm); }
+.form { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s4); }
+
+@media (min-width: 900px) {
+  .sec__lista { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pos__kv { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 420px) {
+  .pos__alvo { grid-template-columns: minmax(0, 1fr); }
+  .pos__dist { padding-bottom: 0; }
+}

@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sistema de design</title>
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/components.css">
+<style>
+  main { max-width: 760px; margin: 0 auto; padding: var(--s4) var(--s4) var(--s12); display: grid; gap: var(--s8); }
+  section { display: grid; gap: var(--s3); }
+  h1 { font-size: var(--fs-xl); } h2 { font-size: var(--fs-lg); } .lead { color: var(--muted); }
+  .row { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; }
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: var(--s2); }
+  .sw { border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden; font-size: var(--fs-xs); }
+  .sw i { display: block; height: 40px; } .sw span { display: block; padding: var(--s1) var(--s2); }
+  .scale { display: grid; gap: var(--s1); }
+  .space { display: flex; gap: var(--s3); align-items: end; }
+  .space b { display: block; background: var(--brand); width: 100%; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; }
+  .grid2 { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+</style>
+</head>
+<body>
+<div class="mkt-bar" data-state="fechado" id="mkt"><span class="mkt-dot"></span><span id="mktTxt">Pregão fechado · último preço de 30/10 às 17:05</span></div>
+<main>
+  <div class="topbar">
+    <div><h1>Sistema de design</h1><p class="lead">Amostra dos tokens e componentes. Aprove o visual antes das telas.</p></div>
+    <button class="icon-btn" id="tema" aria-label="Alternar tema claro e escuro"></button>
+  </div>
+
+  <section aria-labelledby="h-cores">
+    <h2 id="h-cores">Cores</h2>
+    <p class="lead">Verde e vermelho só para ganho e perda. Cada indicação tem cor própria, e nunca vermelho para “comprar”.</p>
+    <div class="swatches" id="sw"></div>
+  </section>
+
+  <section aria-labelledby="h-tipo">
+    <h2 id="h-tipo">Tipografia e espaços</h2>
+    <div class="scale">
+      <div style="font-size:var(--fs-hero);font-weight:700;line-height:1.1">R$ 12.345,67</div>
+      <div style="font-size:var(--fs-xl);font-weight:700">Título 28</div>
+      <div style="font-size:var(--fs-lg);font-weight:600">Subtítulo 20</div>
+      <div>Texto 16. Números alinhados: 1.111,11 · 8.888,88</div>
+      <div class="muted" style="font-size:var(--fs-sm)">Apoio 14 · <span style="font-size:var(--fs-xs)">Legenda 12</span></div>
+    </div>
+    <div class="space" aria-label="Escala de espaçamento em múltiplos de 4 pixels">
+      <div style="width:8%"><b style="height:4px"></b>4</div><div style="width:10%"><b style="height:8px"></b>8</div>
+      <div style="width:12%"><b style="height:12px"></b>12</div><div style="width:14%"><b style="height:16px"></b>16</div>
+      <div style="width:16%"><b style="height:24px"></b>24</div><div style="width:18%"><b style="height:32px"></b>32</div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-saldo">
+    <h2 id="h-saldo">Cartão de saldo</h2>
+    <div class="card balance">
+      <div class="balance__label"><span>Saldo total</span><button class="icon-btn" id="olho" aria-pressed="false" aria-label="Esconder valores"></button></div>
+      <div class="balance__value num" id="saldo" aria-live="polite">R$ 12.345,67</div>
+      <div class="balance__sub"><span>Investido <b class="num v">R$ 10.000,00</b></span><span>Resultado <b class="num v">+R$ 2.345,67 (+23,46%)</b></span><span>Hoje <b class="num v">+0,42%</b></span></div>
+    </div>
+    <div class="row"><button class="btn btn--ghost" id="muda">Simular mudança de saldo</button></div>
+  </section>
+
+  <section aria-labelledby="h-linhas">
+    <h2 id="h-linhas">Linha de ativo e selos</h2>
+    <ul class="asset-list card" id="lista"></ul>
+    <div class="row" id="inds"></div>
+    <div class="row"><button class="btn btn--ghost" id="pisca">Simular cotação mudando</button></div>
+  </section>
+
+  <section aria-labelledby="h-form">
+    <h2 id="h-form">Botões e campos</h2>
+    <div class="row">
+      <button class="btn">Registrar compra</button><button class="btn btn--ghost">Ver proposta</button>
+      <button class="btn btn--quiet">Cancelar</button><button class="btn" disabled>Indisponível</button>
+      <button class="icon-btn help-btn" aria-label="O que é P/VP?"></button>
+    </div>
+    <div class="grid2">
+      <div class="field"><label for="q">Quantidade</label><input id="q" inputmode="decimal" placeholder="0" value="10"><span class="field__hint">Cotas que você comprou.</span></div>
+      <div class="field" data-invalid><label for="v">Venda</label><input id="v" inputmode="decimal" value="40" aria-describedby="e1" aria-invalid="true"><span class="field__error" id="e1">A venda é maior que as 30 cotas que você tem.</span></div>
+    </div>
+    <div class="field search"><span id="lupa"></span><input id="busca" placeholder="Buscar por código ou nome" aria-label="Buscar ativo"></div>
+  </section>
+
+  <section aria-labelledby="h-fb">
+    <h2 id="h-fb">Painel, aviso com desfazer, vazio e esqueleto</h2>
+    <div class="row"><button class="btn" id="abre">Abrir painel</button><button class="btn btn--ghost" id="avisa">Excluir lançamento</button></div>
+    <div class="card empty"><span id="vazioIco"></span><h3>Nenhum ativo ainda</h3><p>Aqui aparecem os ativos que você acompanha ou comprou.</p><button class="btn">Acompanhar um ativo</button></div>
+    <div class="card empty" role="alert"><span id="offIco"></span><h3>Sem conexão</h3><p>Mostrando os últimos dados, de 30/10 às 17:05.</p></div>
+    <div class="card" aria-busy="true" aria-label="Carregando"><div class="skeleton skeleton--row"></div><div class="skeleton skeleton--row" style="margin-top:8px"></div></div>
+  </section>
+
+  <section aria-labelledby="h-graf">
+    <h2 id="h-graf">Gráfico</h2>
+    <div class="card"><svg class="chart" viewBox="0 0 300 96" preserveAspectRatio="none" role="img" aria-label="Evolução do patrimônio em 3 meses: de R$ 10.000 para R$ 12.345">
+      <path class="area" d="M0 80 L40 70 L80 74 L120 55 L160 58 L200 38 L240 42 L300 16 L300 96 L0 96Z"/><path class="line" d="M0 80 L40 70 L80 74 L120 55 L160 58 L200 38 L240 42 L300 16"/></svg></div>
+  </section>
+</main>
+
+<dialog class="sheet" id="painel" aria-labelledby="pt">
+  <div class="sheet__grip"></div>
+  <div class="sheet__head"><h2 id="pt">Registrar compra</h2><button class="icon-btn" id="fecha" aria-label="Fechar"></button></div>
+  <div class="sheet__body">
+    <div class="field"><label for="a">Ativo</label><input id="a" value="PETR4"></div>
+    <div class="grid2"><div class="field"><label for="b">Quantidade</label><input id="b" inputmode="decimal" value="10"></div><div class="field"><label for="c">Preço</label><input id="c" inputmode="decimal" value="52,71"></div></div>
+    <button class="btn btn--block">Registrar compra</button>
+  </div>
+</dialog>
+
+<script type="module">
+import { icon } from './js/ui/icons.js';
+import { animarValor, piscar, aviso, prepararPainel, vibrar, brl } from './js/ui/kit.js';
+const $ = (s) => document.querySelector(s);
+
+// tema
+const R = document.documentElement;
+$('#tema').innerHTML = icon('gear'); // alterna claro/escuro
+$('#tema').onclick = () => {
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const atual = R.dataset.theme || (dark ? 'dark' : 'light');
+  R.dataset.theme = atual === 'dark' ? 'light' : 'dark';
+};
+// ícones
+$('#olho').innerHTML = icon('eye'); $('#fecha').innerHTML = icon('x'); $('#lupa').innerHTML = icon('search');
+$('#vazioIco').innerHTML = icon('wallet', 40); $('#offIco').innerHTML = icon('wifiOff', 40);
+document.querySelector('.help-btn').innerHTML = icon('help', 18);
+
+// cores
+const toks = ['bg','surface','surface-2','border','text','muted','brand','gain','loss','ind-candidata-fg','ind-cautela-fg','ind-boa-fg','ind-atencao-fg','ind-evitar-fg','ind-neutro-fg'];
+$('#sw').innerHTML = toks.map((t) => `<div class="sw"><i style="background:var(--${t})"></i><span>--${t}</span></div>`).join('');
+
+// indicações (rótulo + ícone + cor)
+const INDS = [
+  ['candidata','Preço atrativo pelos números','tag'], ['cautela','Atrativo, com ressalvas','alert'], ['boa','Boa, mas sem desconto','shield'],
+  ['atencao','Atenção ao rendimento','alert'], ['evitar','Sinais de alerta','ban'], ['neutro','Neutro','minus'],
+];
+const badge = ([k, t, i]) => `<span class="badge ind-${k}">${icon(i)}${t}</span>`;
+$('#inds').innerHTML = INDS.map(badge).join('') + '<span class="badge badge--consulta">Só consulta</span>';
+
+// linhas
+const linhas = [
+  ['PETR4','Petrobras PN','R$ 52,71','+0,98%','gain',INDS[0]], ['MXRF11','Maxi Renda FII','R$ 9,62','−0,21%','loss',INDS[2]],
+  ['WEGE3','WEG ON','R$ 41,10','+0,00%','',null, true],
+];
+$('#lista').innerHTML = linhas.map(([c,n,p,v,cl,ind,consulta]) => `
+  <li><a class="asset-row" href="#">
+    <span class="asset-row__logo" aria-hidden="true">${c.slice(0,2)}</span>
+    <span class="col"><span class="asset-row__code">${c}${ind ? badge(ind) : ''}${consulta ? '<span class="badge badge--consulta">Só consulta</span>' : ''}</span><span class="asset-row__name">${n}</span></span>
+    <span class="asset-row__end"><span class="asset-row__price num"><span class="mkt-mark" role="img" aria-label="Pregão fechado: último preço">${icon('clock',14)}</span><span class="cell">${p}</span></span><span class="asset-row__chg num ${cl}">${v}</span></span>
+  </a></li>`).join('');
+
+// interações
+let saldo = 1234567;
+$('#muda').onclick = () => { saldo += 18900; animarValor($('#saldo'), saldo); };
+let escondido = false;
+$('#olho').onclick = () => {
+  escondido = !escondido;
+  $('#olho').setAttribute('aria-pressed', escondido); $('#olho').setAttribute('aria-label', escondido ? 'Mostrar valores' : 'Esconder valores');
+  $('#olho').innerHTML = icon(escondido ? 'eyeOff' : 'eye');
+  $('#saldo').textContent = escondido ? '••••••' : brl(saldo);
+  document.querySelectorAll('.v').forEach((e) => (e.dataset.t ??= e.textContent, e.textContent = escondido ? '••••' : e.dataset.t));
+};
+$('#pisca').onclick = () => piscar($('.cell'), Math.random() > .5 ? 1 : -1);
+prepararPainel($('#painel'));
+$('#abre').onclick = () => $('#painel').showModal(); $('#fecha').onclick = () => $('#painel').close();
+$('#avisa').onclick = () => { aviso('Lançamento excluído.', () => aviso('Lançamento restaurado.', null, 2000)); };
+$('#painel').querySelector('.btn').onclick = () => { $('#painel').close(); vibrar(); aviso('Compra registrada.', null, 2500); };
+
+// os três estados do pregão (clique no aviso do topo para alternar)
+const ests = [['fechado','Pregão fechado · último preço de 30/10 às 17:05'],['aberto','Pregão aberto'],['atrasado','Pregão aberto · cotação atrasada · último preço de 30/10 às 14:20']];
+let ie = 0; $('#mkt').style.cursor = 'pointer'; $('#mkt').title = 'Toque para ver os 3 estados';
+$('#mkt').onclick = () => { ie = (ie + 1) % 3; $('#mkt').dataset.state = ests[ie][0]; $('#mktTxt').textContent = ests[ie][1]; };
+</script>
+</body>
+</html>

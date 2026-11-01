@@ -1,0 +1,183 @@
+/* Componentes reutilizados em todo o app. Só usam tokens de tokens.css. */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 400 var(--fs-md)/1.5 var(--font); font-variant-numeric: tabular-nums;
+  -webkit-tap-highlight-color: transparent; overflow-wrap: anywhere;
+}
+h1, h2, h3, p { margin: 0; }
+button, input, select { font: inherit; color: inherit; }
+button { touch-action: manipulation; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: var(--r-sm); }
+.ico { flex: none; vertical-align: middle; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+[hidden] { display: none !important; }
+.muted { color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; }
+.gain { color: var(--gain); } .loss { color: var(--loss); }
+
+/* ---------- botão ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s2);
+  min-height: 48px; padding: 0 var(--s6); border: 1px solid transparent; border-radius: var(--r-pill);
+  background: var(--brand); color: var(--on-brand); font-weight: 600;
+  transition: transform var(--dur-fast) var(--ease), opacity var(--dur-fast);
+}
+.btn:active { transform: scale(.97); }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }
+.btn--ghost { background: transparent; color: var(--text); border-color: var(--border-control); }
+.btn--quiet { background: transparent; color: var(--brand); padding: 0 var(--s3); min-height: 44px; }
+.btn--block { width: 100%; }
+.icon-btn {
+  display: inline-grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: var(--r-pill);
+  background: transparent; color: var(--text);
+}
+.icon-btn:hover { background: var(--surface-2); }
+.help-btn { width: 24px; height: 24px; margin-left: var(--s1); color: var(--muted); }
+
+/* ---------- cartão e saldo ---------- */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: var(--s5); box-shadow: var(--shadow-1); }
+.balance { background: var(--brand); color: var(--on-brand); border: 0; display: grid; gap: var(--s2); }
+.balance__label { font-size: var(--fs-sm); display: flex; align-items: center; justify-content: space-between; }
+.balance__value { font-size: var(--fs-hero); font-weight: 700; line-height: 1.1; letter-spacing: -.02em; }
+.balance__sub { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); font-size: var(--fs-sm); }
+.balance .icon-btn { color: inherit; }
+.balance .icon-btn:hover { background: rgb(255 255 255 / .16); }
+
+/* ---------- linha de ativo ---------- */
+.asset-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.asset-row {
+  display: grid; grid-template-columns: 40px 1fr auto; gap: var(--s3); align-items: center;
+  padding: var(--s3) var(--s2); border-radius: var(--r-md); min-height: 64px; color: inherit; text-decoration: none; content-visibility: auto; contain-intrinsic-size: auto 64px;
+}
+.asset-row:hover { background: var(--surface-2); }
+.asset-row__logo { width: 40px; height: 40px; border-radius: var(--r-pill); background: var(--surface-2); display: grid; place-items: center; font-size: var(--fs-xs); font-weight: 700; overflow: hidden; }
+.asset-row__logo img { width: 100%; height: 100%; object-fit: cover; }
+.asset-row__code { font-weight: 600; display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
+.asset-row__name { font-size: var(--fs-sm); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.asset-row__end { text-align: right; display: grid; justify-items: end; }
+.asset-row__price { font-weight: 600; display: inline-flex; align-items: center; gap: var(--s1); }
+.asset-row__chg { font-size: var(--fs-sm); }
+.asset-row .col { min-width: 0; display: block; }
+.asset-row__name { display: block; }
+
+/* cotação mudou: pisca de leve */
+@keyframes flash-up { from { background: var(--gain-soft); } to { background: transparent; } }
+@keyframes flash-down { from { background: var(--loss-soft); } to { background: transparent; } }
+.flash-up { animation: flash-up 900ms var(--ease); border-radius: var(--r-sm); }
+.flash-down { animation: flash-down 900ms var(--ease); border-radius: var(--r-sm); }
+
+/* ---------- selos ---------- */
+.badge {
+  display: inline-flex; align-items: center; gap: var(--s1); padding: 2px var(--s2); border-radius: var(--r-pill);
+  font-size: var(--fs-xs); font-weight: 600; line-height: 1.5; white-space: nowrap;
+  background: var(--ind-neutro-bg); color: var(--ind-neutro-fg);
+}
+.badge .ico { width: 14px; height: 14px; }
+.ind-candidata { background: var(--ind-candidata-bg); color: var(--ind-candidata-fg); }
+.ind-cautela { background: var(--ind-cautela-bg); color: var(--ind-cautela-fg); }
+.ind-boa { background: var(--ind-boa-bg); color: var(--ind-boa-fg); }
+.ind-atencao { background: var(--ind-atencao-bg); color: var(--ind-atencao-fg); }
+.ind-evitar { background: var(--ind-evitar-bg); color: var(--ind-evitar-fg); }
+.ind-neutro { background: var(--ind-neutro-bg); color: var(--ind-neutro-fg); }
+.badge--consulta { background: transparent; color: var(--muted); border: 1px dashed var(--muted); }
+
+/* ---------- marcador de pregão (topo) e de preço ---------- */
+.mkt-bar { display: flex; align-items: center; gap: var(--s2); padding: var(--s2) var(--s4); font-size: var(--fs-sm); background: var(--surface); border-bottom: 1px solid var(--border); }
+.mkt-dot { width: 8px; height: 8px; border-radius: var(--r-pill); background: var(--muted); }
+.mkt-bar[data-state="aberto"] .mkt-dot { background: var(--gain); }
+.mkt-bar[data-state="atrasado"] .mkt-dot { background: var(--ind-cautela-fg); }
+.mkt-mark { display: inline-flex; color: var(--muted); }
+
+/* ---------- campos ---------- */
+.field { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s1); }
+.field input, .field select { width: 100%; min-width: 0; }
+.field label { font-size: var(--fs-sm); font-weight: 600; }
+.field input, .field select {
+  min-height: 48px; padding: 0 var(--s4); border: 1px solid var(--border-control); border-radius: var(--r-md);
+  background: var(--surface); font-size: 1rem; /* 16px evita zoom no iOS */
+}
+.field input:focus-visible { outline-offset: 0; }
+.field[data-invalid] input { border-color: var(--ind-atencao-fg); }
+.field__hint { font-size: var(--fs-sm); color: var(--muted); }
+.field__error { font-size: var(--fs-sm); color: var(--ind-atencao-fg); display: flex; gap: var(--s1); }
+.search { position: relative; }
+.search input { width: 100%; padding-left: 44px; }
+.search > span { position: absolute; left: var(--s4); top: 14px; color: var(--muted); pointer-events: none; display: flex; }
+
+/* ---------- painel (bottom sheet no celular, janela no desktop) ---------- */
+dialog.sheet {
+  border: 0; padding: 0; background: var(--surface); color: var(--text); box-shadow: var(--shadow-2);
+  width: min(560px, 100%); max-height: 90dvh; margin: auto; border-radius: var(--r-lg);
+  overflow: hidden; overscroll-behavior: contain;
+}
+dialog.sheet::backdrop { background: var(--scrim); }
+.sheet__grip { display: none; width: 40px; height: 4px; border-radius: 2px; background: var(--border); margin: var(--s2) auto 0; }
+.sheet__head { display: flex; align-items: center; justify-content: space-between; padding: var(--s4) var(--s5) var(--s2); }
+.sheet__body { padding: var(--s2) var(--s5) var(--s6); overflow: auto; max-height: calc(90dvh - 80px); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s4); }
+@media (max-width: 640px) {
+  dialog.sheet { margin: auto 0 0; width: 100%; border-radius: var(--r-lg) var(--r-lg) 0 0; padding-bottom: env(safe-area-inset-bottom); }
+  .sheet__grip { display: block; }
+  dialog.sheet[open] { animation: sheet-up var(--dur-slow) var(--ease); }
+}
+@keyframes sheet-up { from { transform: translateY(100%); } }
+@media (min-width: 641px) { dialog.sheet[open] { animation: fade-in var(--dur) var(--ease); } }
+@keyframes fade-in { from { opacity: 0; } }
+
+/* ---------- aviso com desfazer ---------- */
+.toast-host { position: fixed; left: 0; right: 0; bottom: calc(56px + var(--s3) + env(safe-area-inset-bottom)); /* acima da barra de abas */ display: grid; justify-items: center; gap: var(--s2); pointer-events: none; z-index: 50; padding: 0 var(--s4); }
+.toast {
+  pointer-events: auto; display: flex; align-items: center; gap: var(--s4); max-width: 480px; width: 100%;
+  padding: var(--s3) var(--s4); border-radius: var(--r-md); background: var(--text); color: var(--bg); box-shadow: var(--shadow-2);
+  animation: toast-in var(--dur) var(--ease);
+}
+.toast button { background: none; border: 0; color: inherit; font-weight: 700; text-decoration: underline; min-height: 44px; padding: 0 var(--s2); margin-left: auto; white-space: nowrap; }
+@media (min-width: 900px) { .toast-host { left: 200px; bottom: var(--s4); } } /* barra lateral: não há aba embaixo */
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
+
+/* ---------- estado vazio, erro, esqueleto ---------- */
+.empty { text-align: center; display: grid; justify-items: center; gap: var(--s3); padding: var(--s10) var(--s6); color: var(--muted); }
+.empty h3 { color: var(--text); font-size: var(--fs-lg); }
+.empty .ico { color: var(--brand); }
+.skeleton { background: linear-gradient(90deg, var(--surface-2) 25%, var(--border) 50%, var(--surface-2) 75%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; border-radius: var(--r-sm); min-height: 1em; }
+.skeleton--row { height: 64px; border-radius: var(--r-md); }
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+/* ---------- gráfico (sparkline SVG) ---------- */
+.chart { width: 100%; height: 96px; display: block; }
+.chart path.line { fill: none; stroke: var(--brand); stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.chart path.area { fill: var(--brand-soft); stroke: none; }
+
+/* ---------- movimento reduzido: sem deslocamento, só opacidade ---------- */
+@media (prefers-reduced-motion: reduce) {
+  dialog.sheet[open] { animation: fade-in var(--dur) linear; }
+  .toast { animation: fade-in var(--dur) linear; }
+  .btn:active { transform: none; }
+  .skeleton { animation: none; }
+  .flash-up, .flash-down { animation-duration: 1ms; }
+}
+
+/* ---------- análise do ativo (modal) ---------- */
+.an { box-shadow: none; display: grid; gap: var(--s3); padding: var(--s4); }
+.an h3 { font-size: var(--fs-md); }
+.an p { font-size: var(--fs-sm); }
+.an .badge { font-size: var(--fs-sm); padding: var(--s1) var(--s3); }
+.an summary { min-height: 44px; display: flex; align-items: center; gap: var(--s2); cursor: pointer; font-weight: 600; font-size: var(--fs-sm); list-style: none; }
+.an summary::-webkit-details-marker { display: none; }
+.an summary::before { content: "▸"; color: var(--muted); }
+.an details[open] > summary::before, details.an[open] > summary::before { content: "▾"; }
+.an__list { margin: 0; padding-left: var(--s5); display: grid; gap: var(--s1); font-size: var(--fs-sm); }
+.an__list ul { padding-left: var(--s4); margin: 0 0 var(--s2); }
+.an__msg { display: flex; gap: var(--s3); align-items: flex-start; color: var(--muted); }
+.an__nota { display: flex; align-items: baseline; gap: var(--s2); flex-wrap: wrap; }
+.an__nota strong { font-size: var(--fs-xl); line-height: 1.1; }
+.an__barras { display: grid; gap: var(--s3); }
+.bar__top { display: flex; justify-content: space-between; gap: var(--s2); font-size: var(--fs-sm); }
+.bar__trilho { height: 8px; border-radius: var(--r-pill); background: var(--surface-2); overflow: hidden; margin-top: var(--s1); }
+.bar__trilho i { display: block; height: 100%; background: var(--brand); border-radius: inherit; }
+.duo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s3); }
+.duo > div { background: var(--surface-2); border-radius: var(--r-md); padding: var(--s3); }
+.an--aviso { background: var(--surface-2); border-left: 4px solid var(--muted); }
+.kv dd.num { white-space: nowrap; } /* "R$ 145,11" não quebra no meio */
+@media (max-width: 420px) { .kv.kv--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } } /* 3 colunas não cabem em 360 px */

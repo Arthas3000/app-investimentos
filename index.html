@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Aportes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Meus aportes</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<script>try{var t=JSON.parse(localStorage.getItem('prefs')||'{}').tema,e=document.documentElement;if(t==='claro')e.dataset.theme='light';else if(t==='escuro')e.dataset.theme='dark'}catch(_){}</script>
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/home.css">
+<link rel="stylesheet" href="css/carteira.css">
+<link rel="stylesheet" href="css/historico.css">
+<link rel="stylesheet" href="css/aporte.css">
+<link rel="stylesheet" href="css/simulador.css">
+<link rel="stylesheet" href="css/ajustes.css">
+<link rel="stylesheet" href="css/seumes.css">
+<link rel="stylesheet" href="css/ajuda.css">
+</head>
+<body>
+<a class="skip" href="#view" id="skip">Pular para o conteúdo</a>
+<div class="app">
+  <div class="mkt-bar" id="mkt" data-state="fechado" role="status"><span class="mkt-dot"></span><span id="mktTxt">Carregando…</span></div>
+  <header class="topbar-app"><h1 id="titulo" tabindex="-1">Mercado</h1><a class="icon-btn" href="#ajustes" id="gear" aria-label="Ajustes"></a></header>
+  <main id="view" tabindex="-1"></main>
+  <div class="toast-host" role="status" aria-live="polite"></div>
+  <nav class="nav" id="nav" aria-label="Principal"></nav>
+</div>
+<dialog class="sheet" id="sheet" aria-labelledby="sheetTitulo">
+  <div class="sheet__grip"></div>
+  <div class="sheet__head"><h2 id="sheetTitulo"></h2><button class="icon-btn" id="sheetFecha" aria-label="Fechar"></button></div>
+  <div class="sheet__body" id="sheetBody"></div>
+</dialog>
+<script type="module" src="js/app.js"></script>
+<script type="module" src="js/pwa.js"></script>
+</body>
+</html>

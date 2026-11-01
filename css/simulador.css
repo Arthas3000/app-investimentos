@@ -1,0 +1,86 @@
+/* Simulador. Só usa tokens de tokens.css. Verde/vermelho só no ganho/perda; o sinal (+/−) e o texto carregam o sentido. */
+.sim, .sim-carregando { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s4); align-content: start; min-width: 0; }
+.sim > * { min-width: 0; }
+.sim-h { font-size: var(--fs-lg); }
+.sim-h:focus { outline: none; }
+.sim-intro, .sim-resumo { font-size: var(--fs-sm); }
+.sim-edu { font-size: var(--fs-sm); color: var(--muted); background: var(--surface-2); border-left: 4px solid var(--muted); border-radius: var(--r-sm); padding: var(--s3) var(--s4); }
+.sim-avisos { display: grid; gap: var(--s2); }
+.sim-avisos:empty { display: none; }
+.sim-avisos .notice { flex-wrap: wrap; }
+.sim-voltar .ico { transform: scaleX(-1); }
+
+/* passos */
+.sim-passos { list-style: none; margin: 0; padding: 0; display: flex; gap: var(--s4); font-size: var(--fs-sm); color: var(--muted); }
+.sim-passos li { display: flex; align-items: center; gap: var(--s2); }
+.sim-passos li[aria-current="step"] { color: var(--text); font-weight: 700; }
+.sim-passos__n { width: 28px; height: 28px; border-radius: var(--r-pill); display: grid; place-items: center; font-weight: 700; background: var(--surface-2); border: 2px solid var(--border); }
+.sim-passos li[aria-current="step"] .sim-passos__n { background: var(--brand); color: var(--on-brand); border-color: var(--brand); }
+
+/* cartões do formulário */
+.sim-card { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s3); padding: var(--s4); }
+.sim-card h3, .sim-comp h4 { font-size: var(--fs-md); margin: 0; }
+.sim-card p, .sim-card li { font-size: var(--fs-sm); }
+.sim-ativos { list-style: none; margin: 0; padding: 0; display: grid; }
+.sim-ativo { display: grid; grid-template-columns: minmax(0, 1fr) 104px 44px; gap: var(--s2); align-items: center; padding: var(--s3) 0; border-top: 1px solid var(--border); }
+.sim-ativo:first-child { border-top: 0; }
+.sim-ativo__id { display: grid; gap: 2px; min-width: 0; }
+.sim-ativo__nome { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sim-vazio { padding: var(--s3) 0; }
+.sim-pct { position: relative; }
+.sim-pct input { width: 100%; min-width: 0; min-height: 48px; padding: 0 28px 0 var(--s3); text-align: right; border: 1px solid var(--border-control); border-radius: var(--r-md); background: var(--surface); }
+.sim-pct > span { position: absolute; right: var(--s3); top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.sim-soma { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2); }
+.sim-soma__t { display: flex; align-items: center; gap: var(--s2); margin: 0; }
+.sim-soma__t .ico { color: var(--brand); }
+.sim-estr { margin: 0; padding: 0; border: 0; display: grid; gap: var(--s2); min-width: 0; }
+.sim-estr legend { font-size: var(--fs-sm); font-weight: 600; padding: 0; margin-bottom: var(--s2); }
+.sim-radio { display: flex; align-items: flex-start; gap: var(--s3); padding: var(--s3); border: 1px solid var(--border); border-radius: var(--r-md); min-height: 48px; cursor: pointer; }
+.sim-radio:has(input:checked) { border-color: var(--brand); background: var(--brand-soft); }
+.sim-radio input { width: 24px; height: 24px; flex: none; accent-color: var(--brand); margin: 0; }
+.sim-radio > span { display: grid; gap: 2px; font-size: var(--fs-sm); min-width: 0; }
+#simErros:empty { display: none; }
+
+/* resultado */
+.sim-topo { display: flex; }
+.sim-sk { height: 120px; border-radius: var(--r-lg); }
+.sim-sk--g { height: 200px; }
+.sim-avisos-s { display: grid; gap: var(--s2); background: var(--ind-cautela-bg); border: 2px solid var(--ind-cautela-fg); color: var(--ind-cautela-fg); box-shadow: none; padding: var(--s4); }
+.sim-avisos-s h3 { display: flex; align-items: center; gap: var(--s2); font-size: var(--fs-md); }
+.sim-avisos-s ul { margin: 0; padding-left: var(--s5); display: grid; gap: var(--s1); font-size: var(--fs-sm); }
+.sim-comp { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
+.sim-comp__c { display: grid; gap: var(--s2); align-content: start; padding: var(--s4); }
+.sim-comp__c--eu { border: 2px solid var(--brand); }
+.sim-kv { margin: 0; display: grid; gap: var(--s2); }
+.sim-kv > div { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s3); font-size: var(--fs-sm); }
+.sim-kv dt { color: var(--muted); }
+.sim-kv dd { margin: 0; font-weight: 600; text-align: right; white-space: nowrap; flex: none; }
+.sim-kv dt { min-width: 0; }
+.sim-v { font-size: var(--fs-xl); font-weight: 700; line-height: 1.15; }
+.sim-prem { margin: 0; padding-left: var(--s5); display: grid; gap: var(--s2); }
+.sim-fonte { line-height: 1.5; }
+
+/* gráfico: carteira = cheia e grossa; Ibovespa = tracejada; CDI = pontilhada; IPCA = traço e ponto (a cor não é o único sinal) */
+.sim-graf .chart { height: 200px; margin-top: var(--s2); overflow: visible; }
+.sim-k { fill: none; stroke-linejoin: round; stroke-linecap: butt; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.sim-k--carteira { stroke: var(--brand); stroke-width: 3; }
+.sim-k--ibov { stroke: var(--ind-candidata-fg); stroke-dasharray: 8 5; }
+.sim-k--cdi { stroke: var(--ind-cautela-fg); stroke-dasharray: 1 5; stroke-linecap: round; stroke-width: 3; }
+.sim-k--ipca { stroke: var(--muted); stroke-dasharray: 12 4 2 4; }
+.sim-grade { fill: none; stroke: var(--border); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.sim-graf__eixo { display: flex; justify-content: space-between; font-size: var(--fs-xs); }
+.sim-leg { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); font-size: var(--fs-sm); }
+.sim-leg li { display: flex; align-items: center; gap: var(--s2); }
+.sim-leg svg { flex: none; overflow: visible; }
+.sim-det summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 600; font-size: var(--fs-sm); }
+.sim-tab { overflow-x: auto; max-width: 100%; }
+.sim-tab table { border-collapse: collapse; width: 100%; font-size: var(--fs-xs); }
+.sim-tab th, .sim-tab td { padding: var(--s2); border-top: 1px solid var(--border); text-align: right; white-space: nowrap; }
+.sim-tab th:first-child { text-align: left; }
+.sim-tab thead th { color: var(--muted); font-weight: 600; white-space: normal; }
+
+@media (max-width: 420px) {
+  .sim-ativo { grid-template-columns: minmax(0, 1fr) 88px 44px; }
+  .sim-radio { padding: var(--s3) var(--s2); }
+}
+@media (prefers-reduced-motion: reduce) { .sim-sk { animation: none; } }

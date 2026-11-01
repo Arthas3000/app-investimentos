@@ -1,0 +1,62 @@
+/* Ajustes, tour "Como usar" e convite de primeiro acesso. Só usa tokens de tokens.css. */
+.aj { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s3); }
+.aj h2 { font-size: var(--fs-md); font-weight: 700; }
+.aj__form { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s3); }
+.aj__duas { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s3); }
+@media (min-width: 480px) { .aj__duas { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.aj__linha { display: flex; gap: var(--s2); align-items: stretch; }
+.aj__linha input { flex: 1 1 auto; }
+.aj__linha .btn { flex: none; padding: 0 var(--s4); }
+.aj__acoes { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.aj__acoes .btn { flex: 1 1 auto; }
+.aj__msg { font-size: var(--fs-sm); display: flex; gap: var(--s1); align-items: flex-start; }
+.aj__msg:empty { display: none; }
+.aj__msg[data-erro="1"] { color: var(--ind-atencao-fg); }
+.aj__msg .ico { margin-top: 3px; }
+.aj__passos summary { cursor: pointer; font-size: var(--fs-sm); font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+.aj__passos ol { margin: 0 0 var(--s2); padding-left: var(--s5); font-size: var(--fs-sm); color: var(--muted); display: grid; gap: var(--s1); }
+.aj__passos a { color: var(--brand); }
+.aj__grupo { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: var(--s2); }
+.aj__grupo legend { padding: 0; font-size: var(--fs-sm); font-weight: 600; margin-bottom: var(--s2); }
+.aj__opcoes { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.aj__opcao { position: relative; }
+.aj__opcao input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.aj__opcao span { display: inline-flex; align-items: center; min-height: 44px; padding: 0 var(--s4); border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); }
+.aj__opcao input:checked + span { background: var(--brand); color: var(--on-brand); border-color: var(--brand); font-weight: 600; }
+.aj__opcao input:checked + span::before { content: "\2713"; margin-right: var(--s1); } /* a seleção não depende só da cor */
+.aj__opcao input:focus-visible + span { outline: 3px solid var(--focus); outline-offset: 2px; }
+.aj__lembrete { display: grid; gap: var(--s2); justify-items: start; }
+.aj__fontes { list-style: none; margin: 0 0 var(--s3); padding: 0; display: grid; gap: var(--s3); }
+.aj__fontes li { display: grid; gap: 2px; font-size: var(--fs-sm); }
+.aj__fontes strong { font-size: var(--fs-md); }
+.aj__fontes span { color: var(--muted); }
+.aj__sk { height: 44px; margin-bottom: var(--s2); }
+.aj__apagar { border-color: var(--ind-atencao-fg); color: var(--ind-atencao-fg); }
+.aj__check { display: flex; gap: var(--s2); align-items: center; min-height: 44px; font-size: var(--fs-sm); }
+.aj__check input { width: 20px; height: 20px; flex: none; }
+.aj-confirma { max-width: 440px; }
+
+/* tour */
+dialog.tour { width: min(480px, 100%); }
+.tour__n { font-size: var(--fs-sm); color: var(--muted); }
+.tour h2 { font-size: var(--fs-lg); }
+.tour h2:focus { outline: none; }
+.tour__corpo { display: grid; gap: var(--s3); }
+.tour__lista, .tour__selos { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--s2); }
+.tour__lista li { font-size: var(--fs-sm); }
+.tour__pontos { display: flex; gap: var(--s2); justify-content: center; }
+.tour__pontos span { width: 8px; height: 8px; border-radius: var(--r-pill); background: var(--border); }
+.tour__pontos .on { background: var(--brand); width: 20px; }
+.tour__acoes { display: flex; gap: var(--s2); justify-content: flex-end; }
+.tour__acoes .btn { flex: 1 1 0; }
+.tour__acoes .btn[hidden] { display: none; }
+
+/* convite de primeiro acesso: pequeno, sem tomar o foco */
+.tour-convite {
+  position: fixed; z-index: 30; left: var(--s4); right: var(--s4); bottom: calc(72px + env(safe-area-inset-bottom));
+  max-width: 440px; margin: 0 auto; display: grid; gap: var(--s2); padding: var(--s3) var(--s4);
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); box-shadow: var(--shadow-2);
+  font-size: var(--fs-sm); animation: fade-in var(--dur) var(--ease);
+}
+.tour-convite div { display: flex; gap: var(--s2); justify-content: flex-end; }
+@media (min-width: 900px) { .tour-convite { left: 216px; right: auto; bottom: var(--s4); margin: 0; } }
