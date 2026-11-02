@@ -136,7 +136,7 @@ export function montar(root, ctx) {
     </section>
 
     <section class="card aj" aria-labelledby="aj-tour"><h2 id="aj-tour">Como usar</h2>
-      <p class="muted">Um tour de 5 passos curtos: as abas, como registrar uma compra, como fazer o aporte e o que significam os selos.</p>
+      <p class="muted">Um tour guiado que passa por cada aba e mostra, na própria tela, o que cada informação significa.</p>
       <button class="btn btn--ghost" type="button" id="ajTour">Ver o tour</button>
     </section>
 

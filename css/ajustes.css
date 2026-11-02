@@ -36,20 +36,32 @@
 .aj__check input { width: 20px; height: 20px; flex: none; }
 .aj-confirma { max-width: 440px; }
 
-/* tour */
-dialog.tour { width: min(480px, 100%); }
+/* tour guiado: dialog transparente em tela cheia; o anel recorta o elemento destacado com a sombra (scrim) em volta */
+dialog.tour-guia { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: transparent; overflow: hidden; }
+dialog.tour-guia::backdrop { background: transparent; }
+dialog.tour-guia:has(.tour-guia__anel[hidden]) { background: var(--scrim); } /* sem destaque: escurece tudo */
+.tour-guia__anel { position: fixed; pointer-events: none; border-radius: var(--r-md); outline: 3px solid var(--focus); outline-offset: 0; box-shadow: 0 0 0 200vmax var(--scrim); }
+.tour-guia__card {
+  position: fixed; left: var(--s3); right: var(--s3); margin: 0 auto; max-width: 480px; max-height: min(52dvh, 440px); overflow: auto;
+  display: grid; gap: var(--s3); padding: var(--s4) var(--s5) var(--s5); background: var(--surface); color: var(--text);
+  border-radius: var(--r-lg); box-shadow: var(--shadow-2); animation: fade-in var(--dur) var(--ease);
+}
+.tour-guia__card[data-lado="base"] { bottom: calc(var(--s3) + env(safe-area-inset-bottom)); }
+.tour-guia__card[data-lado="topo"] { top: calc(var(--s3) + env(safe-area-inset-top)); }
+@media (min-width: 900px) { .tour-guia__card { left: calc(200px + var(--s4)); } } /* não cobre a barra lateral */
+.tour-guia__topo { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); margin-bottom: calc(-1 * var(--s2)); }
+.tour-guia__card p { font-size: var(--fs-sm); line-height: 1.55; }
 .tour__n { font-size: var(--fs-sm); color: var(--muted); }
-.tour h2 { font-size: var(--fs-lg); }
-.tour h2:focus { outline: none; }
+.tour-guia h2 { font-size: var(--fs-lg); }
+.tour-guia h2:focus { outline: none; }
 .tour__corpo { display: grid; gap: var(--s3); }
-.tour__lista, .tour__selos { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--s2); }
-.tour__lista li { font-size: var(--fs-sm); }
-.tour__pontos { display: flex; gap: var(--s2); justify-content: center; }
-.tour__pontos span { width: 8px; height: 8px; border-radius: var(--r-pill); background: var(--border); }
-.tour__pontos .on { background: var(--brand); width: 20px; }
+.tour__selos { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: var(--s2); }
+.tour__barra { height: 4px; border-radius: var(--r-pill); background: var(--surface-2); overflow: hidden; }
+.tour__barra i { display: block; height: 100%; background: var(--brand); border-radius: inherit; }
 .tour__acoes { display: flex; gap: var(--s2); justify-content: flex-end; }
 .tour__acoes .btn { flex: 1 1 0; }
 .tour__acoes .btn[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { .tour-guia__card { animation: none; } }
 
 /* convite de primeiro acesso: pequeno, sem tomar o foco */
 .tour-convite {

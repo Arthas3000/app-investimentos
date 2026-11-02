@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { validarAporte, validarCustos, dataBr } from '../js/views/ajustes.js';
-import { PASSOS, passoSeguinte } from '../js/ui/tour.js';
+import { PASSOS, passoSeguinte, ladoDoCartao } from '../js/ui/tour.js';
 import { FREQUENCIAS, frequenciaValida, temaValido, chavesParaApagar, CHAVES_DADOS, prefs, salvarPrefs } from '../js/data/store.js';
 
 test('frequência: só 30, 60 e 120 s', () => {
@@ -59,11 +59,26 @@ test('prefs: valor desconhecido volta ao padrão', () => {
   } finally { delete globalThis.localStorage; }
 });
 
-test('tour: 5 passos, navegação limitada e fim = concluir', () => {
-  assert.equal(PASSOS.length, 5);
-  assert.ok(PASSOS.every((p) => p.titulo && (p.texto || p.itens)));
+test('tour guiado: passa por todas as abas, com texto e tela em cada passo', () => {
+  assert.ok(PASSOS.length >= 18 && PASSOS.length <= 26, `${PASSOS.length} passos`);
+  assert.equal(new Set(PASSOS.map((p) => p.id)).size, PASSOS.length, 'ids únicos');
+  const telas = ['home', 'carteira', 'mercado', 'descobrir', 'simulador', 'historico', 'ajustes'];
+  for (const p of PASSOS) {
+    assert.ok(p.titulo && p.texto, p.id);
+    assert.ok(telas.includes(p.rota.slice(1).split('/')[0]), `${p.id}: rota ${p.rota}`);
+    assert.ok(p.texto.split(/\s+/).length <= 60, `${p.id}: texto curto`);
+    if (p.alvo) assert.ok(p.semAlvo, `${p.id}: diz o que fazer quando o elemento não existe`);
+  }
+  for (const t of telas) assert.ok(PASSOS.some((p) => p.rota.startsWith(`#${t}`)), `passa por ${t}`);
+  assert.ok(!PASSOS[0].alvo && !PASSOS.at(-1).alvo, 'abre e fecha sem destaque');
+  assert.doesNotMatch(PASSOS.map((p) => `${p.texto} ${p.semAlvo ?? ''}`).join(' '), /recomendamos|compre agora|venda agora|urgente/i);
   assert.equal(passoSeguinte(0, -1), 0);
   assert.equal(passoSeguinte(0, 1), 1);
-  assert.equal(passoSeguinte(3, 1), 4);
-  assert.equal(passoSeguinte(4, 1), null);
+  assert.equal(passoSeguinte(PASSOS.length - 1, 1), null);
+});
+
+test('tour guiado: cartão fica do lado oposto ao destaque', () => {
+  assert.equal(ladoDoCartao({ top: 100, bottom: 200 }, 800), 'base');
+  assert.equal(ladoDoCartao({ top: 500, bottom: 650 }, 800), 'topo');
+  assert.equal(ladoDoCartao(null, 800), 'base');
 });
