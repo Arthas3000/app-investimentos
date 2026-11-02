@@ -158,6 +158,24 @@ export function montar(root, ctx) {
     return { selos: seloHtml(a.indicacao) + faixaHtml(a.faixa), nv, ne };
   }
 
+  // Faixa de preço de quem já tem o ativo: o que ela significa para a posição, com os números e o preço pago.
+  const FAIXA_POS = {
+    caro: ['trend', 'Preço alto pelos números', 'Está entre os preços mais altos do próprio histórico ou acima do valor estimado. Pode ser um bom momento para revisar se vale manter a posição.'],
+    normal: ['minus', 'Chegou ao preço normal', 'O preço está na faixa do meio do próprio histórico, perto do valor estimado.'],
+    barato: ['tag', 'Preço baixo pelos números', 'Abaixo do que costuma valer pelos dados do próprio ativo.'],
+  };
+  function faixaBloco(i, ajuda) {
+    const a = estadoAn === 'ok' ? analises.get(i.ativo) : null;
+    const f = a && !a.semDados ? a.faixa : null, e = FAIXA_POS[f?.id];
+    if (!e) return '';
+    const pago = i.precoMedio != null && i.preco != null && i.precoMedio > 0
+      ? `<p class="num">Você pagou ${R(i.precoMedio)} em média; hoje ${brl(i.preco)} (${pctS((i.preco / i.precoMedio - 1) * 100)}).</p>` : '';
+    const lim = f.limites ? `<p class="num">Faixa de 5 anos: barato até ${brl(f.limites.barato)}, caro a partir de ${brl(f.limites.caro)}.</p>` : '';
+    return `<div class="pos__faixa pos__faixa--${f.id}">${icon(e[0], 20)}<div>
+      <p class="pos__faixa-t"><strong>${e[1]}</strong>${ajuda ? botaoAjuda('faixaPreco') : ''}</p><p>${e[2]}</p>${pago}${lim}
+      <details><summary>Ver os números</summary><ul>${f.motivos.map((m) => `<li>${esc(m)}</li>`).join('')}</ul></details></div></div>`;
+  }
+
   const distTxt = (alvo, d) => {
     if (alvo == null) return 'Sem alvo definido.';
     if (d == null) return 'Sem preço para comparar com o alvo.';
@@ -182,6 +200,7 @@ export function montar(root, ctx) {
         return `<article class="card pos" data-c="${esc(i.ativo)}">
           <div class="pos__top">${idHtml(i.ativo, b)}<div class="pos__val"><span class="num pos__valor">${R(i.valor)}</span><span class="muted num">${i.qtd} ${i.qtd === 1 ? 'cota' : 'cotas'}</span></div></div>
           <p class="pos__selos">${s.selos}</p>
+          ${faixaBloco(i, a1)}
           <dl class="kv pos__kv">
             <div><dt>Preço atual</dt><dd class="num">${marcador()}${i.preco == null ? '—' : brl(i.preco)}${arq ? ` <span class="muted">(de ${dataNum(arq).slice(0, 5)})</span>` : ''}</dd></div>
             <div><dt>Preço médio</dt><dd class="num">${R(i.precoMedio)}</dd></div>

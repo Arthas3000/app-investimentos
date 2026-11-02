@@ -58,6 +58,7 @@ export function analisar({ ticker, classe, preco, dados, ctx = {}, setor = null,
   const indicacao = indicar({ classe: fii ? 'fii' : 'acao', valor, estab, fund, risco, preco, ctx: c });
   const aviso = risco?.saltos > 0 ? AVISO_SALTOS : null;
   if (aviso) indicacao.motivos = [...indicacao.motivos, aviso];
-  const faixa = faixaPreco({ classe: fii ? 'fii' : 'acao', preco, precos5a, valor: fii ? valor.pvp : valor.ms });
+  const limites = risco ? { barato: risco.limBarato, caro: risco.limCaro } : null; // sem a série: limites do workflow
+  const faixa = faixaPreco({ classe: fii ? 'fii' : 'acao', preco, precos5a, limites, valor: fii ? valor.pvp : valor.ms });
   return { valor, estab, estabSetor: ctx.estabSetor?.[chaveSetor] ?? null, indicacao, faixa, aviso };
 }

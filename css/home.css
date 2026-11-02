@@ -71,3 +71,11 @@
 /* o botão de confirmar fica visível mesmo com o teclado e os campos ocupando a tela */
 .reg #regOk { position: sticky; bottom: 0; box-shadow: 0 0 0 var(--s2) var(--surface); }
 .home-desde .muted { font-size: var(--fs-sm); }
+
+/* atalho para o Descobrir, com cara de campo de busca, acima do saldo */
+.descobrir-btn { display: flex; align-items: center; gap: var(--s3); min-height: 48px; padding: 0 var(--s4); border: 1px solid var(--border-control); border-radius: var(--r-pill); background: var(--surface); color: var(--muted); text-decoration: none; transition: border-color var(--dur-fast) var(--ease); }
+.descobrir-btn span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.descobrir-btn .ico:last-child { color: var(--muted); }
+.descobrir-btn:hover { border-color: var(--brand); color: var(--text); }
+.descobrir-btn:active { transform: scale(.99); }
+@media (prefers-reduced-motion: reduce) { .descobrir-btn:active { transform: none; } }

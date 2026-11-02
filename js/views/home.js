@@ -120,6 +120,7 @@ export function montar(root, ctx) {
   const hoje = () => hojeIso();
 
   root.innerHTML = `
+    <a class="descobrir-btn" href="#descobrir">${icon('search')}<span>Descobrir ativos baratos</span>${icon('chevronRight')}</a>
     <section class="card balance" id="hCard" aria-label="Saldo da carteira" hidden>
       <div class="balance__label"><span>Saldo da carteira</span><button class="icon-btn" id="hOlho" type="button" aria-label="Ocultar valores" aria-pressed="false"></button></div>
       <p class="balance__value num" id="hSaldo">—</p>

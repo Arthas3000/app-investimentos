@@ -25,12 +25,13 @@
 <link rel="stylesheet" href="css/ajustes.css">
 <link rel="stylesheet" href="css/seumes.css">
 <link rel="stylesheet" href="css/ajuda.css">
+<link rel="stylesheet" href="css/descobrir.css">
 </head>
 <body>
 <a class="skip" href="#view" id="skip">Pular para o conteúdo</a>
 <div class="app">
   <div class="mkt-bar" id="mkt" data-state="fechado" role="status"><span class="mkt-dot"></span><span id="mktTxt">Carregando…</span></div>
-  <header class="topbar-app"><h1 id="titulo" tabindex="-1">Mercado</h1><a class="icon-btn" href="#ajustes" id="gear" aria-label="Ajustes"></a></header>
+  <header class="topbar-app"><button class="icon-btn topbar-app__voltar" id="voltar" type="button" aria-label="Voltar" hidden></button><h1 id="titulo" tabindex="-1">Mercado</h1><a class="icon-btn" href="#ajustes" id="gear" aria-label="Ajustes"></a></header>
   <main id="view" tabindex="-1"></main>
   <div class="toast-host" role="status" aria-live="polite"></div>
   <nav class="nav" id="nav" aria-label="Principal"></nav>

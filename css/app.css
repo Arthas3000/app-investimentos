@@ -2,7 +2,10 @@
 .app { min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto 1fr; }
 .app > * { min-width: 0; }
 .topbar-app { display: flex; align-items: center; justify-content: space-between; padding: var(--s3) var(--s4); background: var(--bg); }
-.topbar-app h1 { font-size: var(--fs-lg); }
+.topbar-app h1 { font-size: var(--fs-lg); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topbar-app { gap: var(--s1); }
+.topbar-app__voltar { margin-left: calc(-1 * var(--s3)); }
+.topbar-app__voltar .ico { transform: scaleX(-1); } /* chevronRight espelhado */
 #titulo:focus, #view:focus { outline: none; } /* foco por código ao trocar de tela */
 .skip { position: fixed; left: var(--s2); top: var(--s2); z-index: 60; padding: var(--s3) var(--s4); border-radius: var(--r-md); background: var(--surface); color: var(--text); font-weight: 600; box-shadow: var(--shadow-2); transform: translateY(-200%); }
 .skip:focus { transform: none; }

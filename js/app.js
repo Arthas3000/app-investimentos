@@ -15,7 +15,7 @@ const ABAS = [
   ['simulador', 'Simulador', 'sim'], ['historico', 'Histórico', 'history'],
 ];
 
-const SEM_ABA = { aporte: 'Aporte', seumes: 'Seu mês' }; // rotas fora da barra: #aporte (a aba Home continua marcada)
+const SEM_ABA = { aporte: 'Aporte', seumes: 'Seu mês', descobrir: 'Descobrir' }; // rotas fora da barra: #aporte (a aba Home continua marcada)
 const nomeDe = (id) => ABAS.find(([a]) => a === id)?.[1] ?? SEM_ABA[id] ?? 'Ajustes';
 
 // ---- contexto compartilhado ----
@@ -36,11 +36,15 @@ feriados(new Date().getFullYear()).then((r) => { ctx.feriados = r.data ?? []; pi
 // ---- navegação ----
 $('#nav').innerHTML = ABAS.map(([id, nome, ic]) => `<a href="#${id}" data-id="${id}">${icon(ic, 22)}<span>${nome}</span></a>`).join('');
 $('#gear').innerHTML = icon('gear', 22);
+$('#voltar').innerHTML = icon('chevronRight', 22); // espelhado no CSS
+// Voltar: vai para a última tela diferente da atual (abrir e fechar o modal de um ativo não conta); sem uma, a Home.
+let anterior = null, telaAtual = null;
+$('#voltar').onclick = () => { location.hash = `#${anterior && anterior !== telaAtual ? anterior : 'home'}`; };
 $('#sheetFecha').innerHTML = icon('x');
 prepararPainel(ctx.sheet);
 $('#sheetFecha').onclick = () => ctx.sheet.close();
-// fechar o painel volta para a lista (a lista nunca é destruída, então a rolagem fica como estava)
-ctx.sheet.addEventListener('close', () => { if (location.hash.includes('/ativo/')) history.replaceState(null, '', '#mercado'); });
+// fechar o painel volta para a lista de onde ele abriu (#mercado ou #descobrir; a lista nunca é destruída, então a rolagem fica)
+ctx.sheet.addEventListener('close', () => { if (location.hash.includes('/ativo/')) history.replaceState(null, '', location.hash.replace(/\/ativo\/.*$/, '')); });
 
 // Mercado é estático (tela inicial histórica); as demais carregam sob demanda. Se o arquivo da tela não existir
 // ou falhar, cai no estado "chega em breve" sem quebrar o app (e tenta de novo na próxima visita).
@@ -53,6 +57,7 @@ const CARREGAR = {
   simulador: () => import('./views/simulador.js'),
   ajustes: () => import('./views/ajustes.js'),
   seumes: () => import('./views/seumes.js'),
+  descobrir: () => import('./views/descobrir.js'),
 };
 let limpar = null;
 let fila = Promise.resolve(); // hashchanges em sequência: a montagem assíncrona nunca se atropela
@@ -74,7 +79,7 @@ async function ir(id, resto) {
     else $('#view').innerHTML = `<div class="card empty">${icon('target', 40)}<h3>${nomeDe(id)}</h3><p>Esta tela chega em uma das próximas etapas.</p><a class="btn" href="#mercado">Ver o Mercado</a></div>`;
   }
   if (trocou) $('#titulo').focus({ preventScroll: true }); // leitor de tela anuncia a nova tela; sem rolar
-  VIEWS[id]?.rota?.(resto);
+  VIEWS[id]?.rota?.(resto, ctx);
 }
 
 function rota() {
@@ -84,6 +89,8 @@ function rota() {
   const marcada = Object.hasOwn(SEM_ABA, id) ? 'home' : id;
   document.querySelectorAll('#nav a').forEach((a) => (a.dataset.id === marcada ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
   $('#titulo').textContent = nomeDe(id);
+  if (id !== telaAtual) { anterior = telaAtual; telaAtual = id; }
+  $('#voltar').hidden = !(Object.hasOwn(SEM_ABA, id) || id === 'ajustes'); // telas fora da barra de abas
   document.title = `${nomeDe(id)} · Meus aportes`;
   fila = fila.then(() => ir(id, resto)).catch((e) => console.error(e)); // um erro numa tela não trava as próximas
 }

@@ -2,7 +2,7 @@
 .hist-acoes { display: flex; flex-wrap: wrap; gap: var(--s2); }
 .hist-acoes .btn { flex: 1 1 140px; }
 .hist-check { display: flex; align-items: center; gap: var(--s2); min-height: 44px; }
-.hist-check input { width: 22px; height: 22px; }
+.hist-check input { width: 24px; height: 24px; }
 .hist-mes { display: grid; gap: var(--s2); }
 .hist-mes__head { display: flex; justify-content: space-between; gap: var(--s3); font-size: var(--fs-md); padding: 0 var(--s1); }
 .hist-mes__head .num { text-transform: none; }

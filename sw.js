@@ -3,7 +3,7 @@
 // antigos e o app passa a usar os arquivos novos. Arquivo novo/removido em css/ ou js/ também precisa entrar/sair
 // de PRECACHE (o `npm test` falha se a lista e o disco divergirem). Dados (dados/*.json, dados/precos/*) não
 // dependem da versão: são atualizados sozinhos em segundo plano.
-const VERSAO = 'v5';
+const VERSAO = 'v6';
 const CACHE = `aportes-${VERSAO}`;
 
 const PRECACHE = [
@@ -21,6 +21,7 @@ const PRECACHE = [
   'css/app.css',
   'css/carteira.css',
   'css/components.css',
+  'css/descobrir.css',
   'css/historico.css',
   'css/home.css',
   'css/seumes.css',
@@ -38,6 +39,7 @@ const PRECACHE = [
   'js/core/carteira-calc.js',
   'js/core/carteira-risco.js',
   'js/core/datas.js',
+  'js/core/descobrir.js',
   'js/core/historico-filtro.js',
   'js/core/ics.js',
   'js/core/metas.js',
@@ -65,6 +67,7 @@ const PRECACHE = [
   'js/views/aporte.js',
   'js/views/ajustes.js',
   'js/views/carteira.js',
+  'js/views/descobrir.js',
   'js/views/historico.js',
   'js/views/home.js',
   'js/views/mercado.js',

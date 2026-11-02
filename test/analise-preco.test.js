@@ -50,3 +50,43 @@ test('sem sinal: indefinido', () => {
   assert.equal(f.id, 'indefinido');
   assert.equal(f.sinais.length, 0);
 });
+
+// ---------- limites da faixa (o workflow grava em risco.json; o app compara o preço ao vivo com eles) ----------
+import { limitesFaixa } from '../js/analise/preco.js';
+
+test('percentil arredonda o preço para centavos (52,71 × 100 não vira 5271,000…01)', () => {
+  assert.equal(percentil(52.71, Array(60).fill(5271)), 50);
+});
+
+test('limitesFaixa: maior centavo barato e menor centavo caro, conferidos à mão', () => {
+  // R$ 25,99 tem 25 fechamentos abaixo (percentil 25: barato); R$ 26,00 empata (25,5: normal).
+  // R$ 75,01 tem 75 abaixo (75: caro); R$ 75,00 empata (74,5: normal).
+  assert.deepEqual(limitesFaixa(p5), { barato: 2599, caro: 7501 });
+  assert.equal(limitesFaixa(p5.slice(0, 59)), null);
+  assert.equal(limitesFaixa(null), null);
+  assert.deepEqual(limitesFaixa(Array(80).fill(1000)), { barato: 999, caro: 1001 }); // tudo empatado: só o próprio preço é normal
+});
+
+test('faixa pelos limites dá o mesmo resultado da série inteira (500 casos aleatórios)', () => {
+  let s = 7; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  for (let k = 0; k < 500; k++) {
+    const n = 60 + Math.floor(rnd() * 300), base = 500 + Math.floor(rnd() * 9000);
+    const serie = Array.from({ length: n }, () => base + Math.floor(rnd() * 400) - 200);
+    const preco = (base + Math.floor(rnd() * 600) - 300) / 100;
+    const valor = rnd() < 0.3 ? null : rnd() - 0.5;
+    const classe = rnd() < 0.5 ? 'acao' : 'fii';
+    const a = faixaPreco({ classe, preco, precos5a: serie, valor });
+    const b = faixaPreco({ classe, preco, precos5a: null, limites: limitesFaixa(serie), valor });
+    assert.equal(b.id, a.id, `caso ${k}`);
+    assert.deepEqual(b.sinais, a.sinais, `caso ${k}`);
+    assert.deepEqual(b.limites, a.limites);
+  }
+});
+
+test('faixa pelos limites: motivos mostram os preços de corte', () => {
+  const lim = { barato: 2599, caro: 7501 };
+  assert.match(faixaPreco({ classe: 'acao', preco: 20, limites: lim, valor: null }).motivos[0], /mais baixos dos últimos 5 anos \(até R\$ 25,99\)/);
+  assert.match(faixaPreco({ classe: 'acao', preco: 50, limites: lim, valor: null }).motivos[0], /R\$ 25,99 e R\$ 75,01/);
+  assert.match(faixaPreco({ classe: 'acao', preco: 80, limites: lim, valor: null }).motivos[0], /mais altos dos últimos 5 anos \(a partir de R\$ 75,01\)/);
+  assert.equal(faixaPreco({ classe: 'acao', preco: 50, limites: null, valor: null }).id, 'indefinido');
+});

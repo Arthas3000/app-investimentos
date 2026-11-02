@@ -60,3 +60,18 @@ a.btn { text-decoration: none; }
   .pos__alvo { grid-template-columns: minmax(0, 1fr); }
   .pos__dist { padding-bottom: 0; }
 }
+
+/* faixa de preço de quem já tem o ativo: barato, normal ou caro, com ícone e texto (a cor nunca é o único sinal) */
+.pos__faixa { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s3); padding: var(--s3) var(--s4); border-radius: var(--r-md); border-left: 4px solid var(--ind-neutro-fg); background: var(--ind-neutro-bg); font-size: var(--fs-sm); }
+.pos__faixa > .ico { margin-top: 2px; color: var(--ind-neutro-fg); }
+.pos__faixa > div { display: grid; gap: var(--s1); min-width: 0; }
+.pos__faixa--caro { border-left-color: var(--ind-atencao-fg); background: var(--ind-atencao-bg); }
+.pos__faixa--caro > .ico, .pos__faixa--caro .pos__faixa-t { color: var(--ind-atencao-fg); }
+.pos__faixa--barato { border-left-color: var(--ind-candidata-fg); background: var(--ind-candidata-bg); }
+.pos__faixa--barato > .ico, .pos__faixa--barato .pos__faixa-t { color: var(--ind-candidata-fg); }
+.pos__faixa-t { display: flex; align-items: center; flex-wrap: wrap; font-size: var(--fs-md); }
+.pos__faixa summary { min-height: 44px; display: flex; align-items: center; gap: var(--s2); cursor: pointer; font-weight: 600; list-style: none; width: max-content; max-width: 100%; }
+.pos__faixa summary::-webkit-details-marker { display: none; }
+.pos__faixa summary::before { content: "▸"; }
+.pos__faixa details[open] > summary::before { content: "▾"; }
+.pos__faixa ul { margin: 0; padding-left: var(--s5); display: grid; gap: var(--s1); }
