@@ -181,3 +181,16 @@ dialog.sheet::backdrop { background: var(--scrim); }
 .an--aviso { background: var(--surface-2); border-left: 4px solid var(--muted); }
 .kv dd.num { white-space: nowrap; } /* "R$ 145,11" não quebra no meio */
 @media (max-width: 420px) { .kv.kv--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } } /* 3 colunas não cabem em 360 px */
+
+/* proventos: lista em duas colunas (tipo e datas | valor), cabe em 320 px sem rolar; e conferência entre fontes */
+.prov-lista { list-style: none; margin: 0; padding: 0; display: grid; }
+.prov-lista li { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s3); padding: var(--s2) 0; border-bottom: 1px solid var(--border); font-size: var(--fs-sm); }
+.prov-lista li:last-child { border-bottom: 0; }
+.prov-lista li > span:first-child { display: grid; min-width: 0; }
+.prov-lista li > span:first-child .muted { font-size: var(--fs-xs); }
+.prov-lista li > .num { text-align: right; font-weight: 600; white-space: nowrap; display: grid; }
+.prov-lista li > .num .muted { font-size: var(--fs-xs); font-weight: 400; }
+.conf { display: flex; gap: var(--s2); align-items: flex-start; font-size: var(--fs-sm); padding: var(--s2) var(--s3); border-radius: var(--r-md); }
+.conf .ico { margin-top: 3px; }
+.conf--ok { color: var(--muted); background: var(--surface-2); }
+.conf--div { color: var(--ind-cautela-fg); background: var(--ind-cautela-bg); }

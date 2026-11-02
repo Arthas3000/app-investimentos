@@ -23,14 +23,22 @@ Rodar: `python3 -m http.server 8765` e abrir `http://localhost:8765/`. Testes: `
 | CDI, IPCA | BCB SGS (séries 12 e 433) |
 | Feriados | BrasilAPI |
 | Demonstrações das ações, número de ações, cadastro | CVM: ITR, DFP, composição de capital e FCA (`dados.cvm.gov.br`) |
-| FIIs | CVM: informe mensal; ticker ligado pelo ISIN do COTAHIST |
-| Preços de 5 anos | B3 COTAHIST |
+| FIIs | CVM: informe mensal e informe trimestral (imóveis e resultado); ticker ligado pelo ISIN do COTAHIST |
+| Proventos (dividendos, JCP, rendimentos), desdobramentos, grupamentos e bonificações, número de ações e cotas | B3, páginas de empresas listadas e de fundos (`sistemaswebb3-listados.b3.com.br`); ISIN ligado ao ticker pelo COTAHIST mensal |
+| Preços de 5 anos | B3 COTAHIST, ajustados pelos eventos em ações da B3 |
+| Conferência do IPCA | IBGE, SIDRA (tabela 1737, variável 63) |
+
+Os dados da CVM são publicados sob a Licença Aberta para Bases de Dados (ODbL); os arquivos derivados em `dados/` seguem a mesma licença, com a CVM citada como fonte (também em Ajustes > Fontes). O endpoint de empresas listadas da B3 é o que o próprio site da B3 usa, sem documentação oficial: o workflow faz uma consulta por emissor por dia, em sequência.
+
+### Conferência entre fontes (`scripts/conferir-fontes.mjs`)
+
+A fonte primária vale; a conferência só avisa. Rendimento mensal de FII: CVM (DY × VPA) contra a B3, últimos 6 meses, aceitando data com no mês ou no seguinte, tolerância de 5%; o fundo fica marcado quando mais da metade diverge. Número de ações: CVM (em circulação) contra B3 (total, com tesouraria), tolerância de 5%. IPCA: Banco Central contra IBGE, 12 meses. O resultado vai para `dados/conferencia.json` e aparece no modal do ativo.
 
 Ibovespa é aproximado por BOVA11.
 
 ## Arquivos de `dados/`
 
-`meta.json`, `fundamentos.json` (ações), `fiis.json`, `risco.json` (volatilidade, queda máxima, beta, variações, liquidez, `saltos` e os preços de corte da faixa `limBarato`/`limCaro`, em centavos) e `precos/{TICKER}.json` (`d` em AAAAMMDD, `p` em centavos). Dado ausente é `null`; nunca se inventa número.
+`meta.json`, `fundamentos.json` (ações), `fiis.json`, `proventos.json` (por ticker: `p` = [data com, pagamento, valor, tipo], `soma12m` e `ev` = eventos em ações [data com, fator, rótulo]; mais `quantidades` por emissor), `conferencia.json`, `risco.json` (volatilidade, queda máxima, beta, variações, liquidez, `saltos` e os preços de corte da faixa `limBarato`/`limCaro`, em centavos) e `precos/{TICKER}.json` (`d` em AAAAMMDD, `p` em centavos). Dado ausente é `null`; nunca se inventa número.
 
 A volatilidade, a queda máxima e o beta são calculados no workflow, com o mesmo `js/core/risco.js`. É uma exceção ao princípio "a matemática roda no navegador", aprovada para que a nota de estabilidade do setor não exija baixar centenas de arquivos de preço.
 
@@ -53,9 +61,15 @@ Demonstrações consolidadas, versão mais recente. Razões em fração.
 
 VPA e cotas do informe do último mês. Alavancagem = passivo ÷ ativo. Rendimento por cota do mês = DY do mês × VPA do mês anterior; `rend12m` só existe com 12 meses completos. Segmento: tijolo se ao menos 60% do investido está em imóveis e fundos imobiliários, papel se em CRI, LCI e similares, senão híbrido.
 
+Informe trimestral: FFO 12m por cota (aproximação) = soma dos 4 últimos trimestres de `Resultado_Trimestral_Liquido_Financeiro` menos `Receita_Venda_Investimento_Financeiro`, ÷ cotas; venda de imóveis = essa receita ÷ o resultado. Vacância e inadimplência = média dos imóveis para renda acabados do último trimestre, ponderada pela parcela da receita do fundo (sem ela, pela área); nº de imóveis = quantos são. Colunas acumuladas no semestre (`Rendimentos_Declarados`, `Resultado_Financeiro_Liquido_Acumulado`) não são somadas.
+
+### Proventos das ações
+
+`prov12m` = soma dos proventos (dividendo, JCP) com data com nos últimos 365 dias, por ação (B3). Payout = `prov12m` ÷ `lpa12m` da mesma classe. DY = `prov12m` ÷ preço de agora, calculado no navegador.
+
 ### Premissas (`js/analise/constantes.js`)
 
-Ke = 18%, g = 5%, CDI líquido = CDI × 0,85. Cobertura de dados: 90% ou mais é nota completa, 75% ou mais é parcial, abaixo disso fica sem nota. Nos FIIs, que não têm FFO, vacância nem número de imóveis na CVM, a nota parcial vale a partir de 50% e é rotulada com o que falta.
+Ke = 18%, g = 5%, CDI líquido = CDI × 0,85. Cobertura de dados: 90% ou mais é nota completa, 75% ou mais é parcial, abaixo disso fica sem nota. Nos FIIs a nota parcial vale a partir de 50% e é rotulada com o que falta (qualidade de crédito dos CRIs não existe em fonte aberta).
 
 ### Nota de valor (ações, 1000 pontos; nota = pontos ÷ 100)
 
@@ -110,7 +124,7 @@ Pregão a pregão no calendário do BOVA11. Aportes no primeiro pregão em ou de
 - XIRR por Newton-Raphson, com bisseção de reserva.
 - Retorno real = (1 + TWR) ÷ (1 + IPCA acumulado) − 1.
 - Queda máxima com aportes neutralizados.
-- Sem proventos, sem imposto. Preços do COTAHIST são brutos (sem ajuste por desdobramento). Tudo isso aparece na tela como premissas e avisos.
+- Sem proventos, sem imposto. Preços do COTAHIST ajustados por desdobramento, grupamento e bonificação (eventos da B3), mas não por dividendos. Tudo isso aparece na tela como premissas e avisos.
 
 ## PWA
 
@@ -119,10 +133,10 @@ Pregão a pregão no calendário do BOVA11. Aportes no primeiro pregão em ou de
 ## Limitações
 
 - Só ativos em reais da B3. Dividendos brutos, sem imposto nem come-cotas. Resultado passado não garante futuro.
-- Preços do COTAHIST são brutos (sem ajuste por desdobramento ou grupamento). Ativos com `saltos > 0` mostram aviso de risco possivelmente distorcido.
-- Proventos (DY e payout) ainda não têm fonte no workflow; ficam vazios e o peso é redistribuído.
+- Preços ajustados só pelos eventos em ações que a B3 informa (6 anos); sem o arquivo de proventos, ficam brutos. Ativos que ainda tenham `saltos > 0` mostram aviso de risco possivelmente distorcido.
+- A B3 informa só cerca de 12 meses de proventos: o histórico mais longo se forma com o tempo, porque cada execução diária guarda o anterior. Proventos de units nem sempre vêm na B3; aí DY e payout ficam vazios.
 - Bancos não têm CET1 nem inadimplência na CVM.
-- FFO, vacância, número de imóveis e qualidade de crédito dos FIIs não existem no informe mensal; por isso a nota dos FIIs é sempre parcial (cobertura entre 50% e 75%, rotulada) e FIIs abaixo de 50% mostram só os números disponíveis.
+- FFO de FII é aproximado pelo resultado em caixa do informe trimestral, menos a receita de venda de imóveis; qualidade de crédito dos CRIs não existe em fonte aberta, então a nota de FII de papel continua parcial.
 - Ações de empresas com ITR ou DFP mais antigo que 15 meses não entram.
 - A API do BCB aceita no máximo 20 valores por chamada de `ultimos`; séries longas usam `desde`.
 - Lembrete `.ics`: dias 29 a 31 caem no dia 28.

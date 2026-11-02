@@ -51,7 +51,10 @@ function gravarCustos(textos) {
 }
 
 const SEM_ARMAZENAMENTO = 'Não consegui gravar neste navegador (armazenamento cheio ou bloqueado). Nada foi alterado.';
-const NOME_FONTE = { precos: 'Preços históricos (B3, série histórica)', fundamentos: 'Balanços das empresas (CVM)', fiis: 'Fundos imobiliários (CVM)' };
+const NOME_FONTE = {
+  proventos: 'Proventos e desdobramentos (B3, empresas listadas)', precos: 'Preços históricos (B3, série histórica)',
+  fundamentos: 'Balanços das empresas (CVM)', fiis: 'Fundos imobiliários (CVM, informes mensal e trimestral)', conferencia: 'Conferência entre fontes (CVM x B3, Banco Central x IBGE)',
+};
 
 // ---------- a tela ----------
 export function montar(root, ctx) {
@@ -168,9 +171,9 @@ export function montar(root, ctx) {
     } else {
       itens.push(li('Arquivos de análise', m.offline ? 'Sem conexão e sem cópia guardada. Quando a conexão voltar, abra Ajustes de novo.' : `Não consegui ler (${esc(m.erro?.message ?? 'erro desconhecido')}). Podem estar em atualização.`));
     }
-    itens.push(li('CDI e IPCA', 'Banco Central do Brasil (SGS), atualizados uma vez por dia.'));
+    itens.push(li('CDI e IPCA', 'Banco Central do Brasil (SGS), atualizados uma vez por dia. O IPCA é conferido com o do IBGE.'));
     itens.push(li('Feriados', 'BrasilAPI, para saber os dias de pregão.'));
-    $('#ajFontes').innerHTML = `<ul class="aj__fontes">${itens.join('')}</ul><p class="src">Material educacional, não é recomendação. Resultado passado não garante resultado futuro.</p>`;
+    $('#ajFontes').innerHTML = `<ul class="aj__fontes">${itens.join('')}</ul><p class="src">Os dados da CVM são usados sob a Licença Aberta para Bases de Dados (ODbL); os arquivos derivados em dados/ seguem a mesma licença. Material educacional, não é recomendação. Resultado passado não garante resultado futuro.</p>`;
   }
   pintarFontes().catch((e) => {
     console.error(e);

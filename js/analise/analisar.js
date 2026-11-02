@@ -48,11 +48,13 @@ export function montarCtx({ risco, fundamentos, fiis, cdi, setores = {} }) {
 /** classe: 'acao' | 'fii'. dados: { fundamentos, fiis, risco }. */
 export function analisar({ ticker, classe, preco, dados, ctx = {}, setor = null, precos5a = null }) {
   const fii = classe === 'fii';
-  const fund = (fii ? dados?.fiis : dados?.fundamentos)?.ativos?.[ticker];
+  let fund = (fii ? dados?.fiis : dados?.fundamentos)?.ativos?.[ticker];
   if (!fund) return { semDados: true };
   const risco = dados?.risco?.ativos?.[ticker] ?? null;
   const chaveSetor = fii ? fund.segmento : setor;
   const c = { ...ctx, queda12mSetor: ctx.queda12mSetor?.[chaveSetor] ?? null };
+  // DY da ação: proventos de 12 meses (B3) ÷ preço de agora; o workflow não grava DY porque o preço muda
+  if (!fii && fund.dy == null && typeof fund.prov12m === 'number' && preco > 0) fund = { ...fund, dy: Math.round((fund.prov12m / preco) * 1e6) / 1e6 };
   const valor = (fii ? notaValorFii : notaValorAcao)({ preco, fund, risco, ctx: c });
   const estab = notaEstabilidade({ fund: fii ? null : fund, risco });
   const indicacao = indicar({ classe: fii ? 'fii' : 'acao', valor, estab, fund, risco, preco, ctx: c });

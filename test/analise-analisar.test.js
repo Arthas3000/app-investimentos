@@ -68,3 +68,11 @@ test('analisar: sem a série de 5 anos, a faixa usa os limites de risco.json', (
   assert.ok(a.faixa.sinais.some((s) => s.id === 'percentil' && s.voto === -1));
   assert.deepEqual(a.faixa.limites, { barato: 1100, caro: 2000 });
 });
+
+test('analisar: DY da ação = proventos de 12 meses da B3 ÷ preço de agora', () => {
+  const d2 = { ...dados, fundamentos: { ativos: { ...dados.fundamentos.ativos, DDD3: { ...fa, prov12m: 1.5, payout: 0.75 } } } };
+  const a = analisar({ ticker: 'DDD3', classe: 'acao', preco: 10, dados: d2, ctx, setor: 'S' });
+  const dy = a.valor.pilares.p4.itens.find((i) => i.nome === 'Dividend yield');
+  assert.equal(dy.valor, 0.15);
+  assert.ok(a.valor.cobertura > analisar({ ticker: 'AAA3', classe: 'acao', preco: 10, dados, ctx, setor: 'S' }).valor.cobertura);
+});
