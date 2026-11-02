@@ -17,6 +17,7 @@ jobs:
     steps:
       - name: Seções completas (escopo, TTA, arredondamento)
         run: |
+          which pdftotext || (sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils)
           curl -sSL -m 120 -A "Mozilla/5.0" -o d1.pdf "https://b3.com.br/data/files/8D/10/AA/8A/964599100A29E189AC094EA8/Tarifacao_Equities_V3_PT.pdf"
           pdftotext -layout d1.pdf d1.txt
           echo "=== 1 a 1.2.5 (escopo, CCP, TTA)"; sed -n 160,410p d1.txt
