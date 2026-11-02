@@ -8,6 +8,8 @@ import { fmtQuando } from '../data/pregao.js';
 import { adicionarTransacao, ler } from '../data/carteira.js';
 import { calcular } from '../core/posicoes.js';
 import { centavos, mulDiv } from '../core/money.js';
+import { lerCfg } from '../data/aporte-cfg.js';
+import { tarifasDe, custosOperacao, irrfVenda } from '../core/custos.js';
 
 export const TIPOS = [
   ['compra', 'Compra'], ['venda', 'Venda'], ['deposito', 'Depósito'],
@@ -136,7 +138,7 @@ export function abrirRegistro(ctx, { tipo = 'compra', ativo = '' } = {}) {
   const dlg = ctx.sheet, body = dlg.querySelector('#sheetBody'), titulo = dlg.querySelector('#sheetTitulo');
   const sessao = (sessaoAtual = {});
   const vivo = () => sessaoAtual === sessao && dlg.open;
-  const est = { tipo: TIPOS.some(([id]) => id === tipo) ? tipo : 'compra', ativo: String(ativo).toUpperCase(), qtd: '', preco: '', taxas: '', valor: '', data: hojeIso(), precoManual: false };
+  const est = { tipo: TIPOS.some(([id]) => id === tipo) ? tipo : 'compra', ativo: String(ativo).toUpperCase(), qtd: '', preco: '', taxas: '', valor: '', data: hojeIso(), precoManual: false, taxasManual: false };
   let lista = [], estadoLista = 'carregando', savedAt = null; // 'carregando' | 'ok' | 'erro'
   const nomeTipo = () => TIPOS.find(([id]) => id === est.tipo)[1];
 
@@ -172,7 +174,7 @@ export function abrirRegistro(ctx, { tipo = 'compra', ativo = '' } = {}) {
       cot && `<div class="reg__duo">
         <div class="field"><label for="rQtd">Quantidade</label><input id="rQtd" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="0" value="${esc(est.qtd)}"></div>
         <div class="field"><label for="rPreco">${t === 'transferencia' ? 'Preço médio de origem' : 'Preço por cota'}</label><input id="rPreco" inputmode="numeric" autocomplete="off" placeholder="R$ 0,00" value="${esc(est.preco)}"></div></div>`,
-      (t === 'compra' || t === 'venda') && `<div class="field"><label for="rTaxas">Taxas (opcional)</label><input id="rTaxas" inputmode="numeric" autocomplete="off" placeholder="R$ 0,00" value="${esc(est.taxas)}"></div>`,
+      (t === 'compra' || t === 'venda') && `<div class="field"><label for="rTaxas">Taxas (opcional)</label><input id="rTaxas" inputmode="numeric" autocomplete="off" placeholder="R$ 0,00" value="${esc(est.taxas)}" aria-describedby="rTaxasD"><p class="field__hint" id="rTaxasD"></p></div>`,
       !cot && `<div class="field"><label for="rValor">${t === 'provento' ? 'Valor recebido' : 'Valor'}</label><input id="rValor" inputmode="numeric" autocomplete="off" placeholder="R$ 0,00" value="${esc(est.valor)}"></div>`,
       `<div class="field"><label for="rData">Data</label><input id="rData" type="date" max="${hojeIso()}" value="${est.data}"></div>`,
       t === 'transferencia' && '<p class="field__hint">Para cotas que já eram suas em outra corretora. Entram na carteira com o preço médio que você informar.</p>',
@@ -208,7 +210,19 @@ export function abrirRegistro(ctx, { tipo = 'compra', ativo = '' } = {}) {
     const inp = $('#rPreco'); if (inp) inp.value = est.preco;
   }
 
+  // taxas estimadas pelos custos de Ajustes (tarifas da B3 + corretagem), até a pessoa digitar o valor da nota
+  function estimarTaxas() {
+    const dica = $('#rTaxasD'); if (!dica) return;
+    const q = paraInteiro(est.qtd), p = paraCentavos(est.preco), tar = tarifasDe(lerCfg(), paraCentavos);
+    if (!q || !p || [tar.negociacao, tar.liquidacao, tar.tta, tar.iss, tar.corretagem].some((x) => x == null)) { dica.textContent = ''; return; }
+    let valor; try { valor = mulDiv(q, p, 1); } catch { dica.textContent = ''; return; }
+    const c = custosOperacao(valor, tar), ir = est.tipo === 'venda' ? irrfVenda(valor) : 0;
+    if (!est.taxasManual) { est.taxas = c.total ? formatarCentavos(c.total) : ''; const inp = $('#rTaxas'); if (inp) inp.value = est.taxas; }
+    dica.textContent = `Estimativa: tarifas da B3 ${formatarCentavos(c.b3)}${c.corretagem ? ` + corretagem ${formatarCentavos(c.corretagem + c.iss)}` : ''}. ${est.taxasManual ? 'Você digitou outro valor: vale o seu.' : 'Confira na nota de corretagem e corrija se precisar.'}${ir ? ` IR retido na fonte (0,005%): ${formatarCentavos(ir)}, que não é custo: vira crédito no seu imposto.` : ''}`;
+  }
+
   function pintarTotal() {
+    estimarTaxas();
     const tot = totalEstimado(est);
     $('#regTotal').textContent = tot == null ? '' : `Total ${est.tipo === 'venda' ? 'a receber' : 'da operação'}: ${formatarCentavos(tot)}`;
   }
@@ -228,14 +242,14 @@ export function abrirRegistro(ctx, { tipo = 'compra', ativo = '' } = {}) {
   // ---------- eventos ----------
   body.querySelector('.chips').addEventListener('click', (e) => {
     const b = e.target.closest('[data-tipo]'); if (!b) return;
-    est.tipo = b.dataset.tipo; erros([]); pintarCampos(); pintarSugestoes();
+    est.tipo = b.dataset.tipo; est.taxasManual = false; est.taxas = ''; erros([]); pintarCampos(); pintarSugestoes(); // outra operação: volta a estimativa
   });
   campos.addEventListener('input', (e) => {
     const id = e.target.id, v = e.target.value;
     if (id === 'rAtivo') { est.ativo = v; pintarSugestoes(); aplicarPreco(); pintarRef(); }
     else if (id === 'rQtd') { e.target.value = est.qtd = String(soDigitos(v).slice(0, 9)); }
     else if (id === 'rPreco') { e.target.value = est.preco = mascaraReais(v); est.precoManual = true; }
-    else if (id === 'rTaxas') { e.target.value = est.taxas = mascaraReais(v); }
+    else if (id === 'rTaxas') { e.target.value = est.taxas = mascaraReais(v); est.taxasManual = true; }
     else if (id === 'rValor') { e.target.value = est.valor = mascaraReais(v); }
     else if (id === 'rData') est.data = v;
     pintarTotal(); erros([]);

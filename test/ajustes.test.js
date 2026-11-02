@@ -82,3 +82,15 @@ test('tour guiado: cartão fica do lado oposto ao destaque', () => {
   assert.equal(ladoDoCartao({ top: 500, bottom: 650 }, 800), 'topo');
   assert.equal(ladoDoCartao(null, 800), 'base');
 });
+
+test('custos: tarifas da B3 e ISS em %, vazias voltam aos valores oficiais; inválidas explicam', () => {
+  const v = validarCustos('', '', { iss: '', tNeg: '', tLiq: '', tTta: '' });
+  assert.equal(v.ok, true);
+  assert.deepEqual(v.textos, { taxa: '', lote: '1', iss: '', tNeg: '0,0050', tLiq: '0,0224', tTta: '0,00225' });
+  const w = validarCustos('R$ 4,90', '1', { iss: '5', tNeg: '0,005', tLiq: '0,0224%', tTta: '0,0019' });
+  assert.deepEqual(w.textos, { taxa: 'R$ 4,90', lote: '1', iss: '5', tNeg: '0,005', tLiq: '0,0224', tTta: '0,0019' });
+  const x = validarCustos('', '', { iss: '20', tNeg: 'a', tLiq: '0,0224', tTta: '0,00225' });
+  assert.equal(x.ok, false);
+  assert.match(x.erros.join(' '), /ISS/);
+  assert.match(x.erros.join(' '), /negociação/);
+});

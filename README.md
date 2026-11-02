@@ -104,9 +104,13 @@ Precedência: Evitar > Atenção ao rendimento > Preço atrativo pelos números 
 - **Seu mês** (`#seumes`): aportes, proventos, patrimônio e marcos.
 - **Descobrir** (`#descobrir`, atalho no topo da Home): ações e FIIs na faixa barato, com busca, filtro, ordenação (nota, desconto, posição no histórico) e opção de ocultar "Evitar". Cada ativo abre a análise (`#descobrir/ativo/PETR4`) ou atalhos de pesquisa externa (Google Notícias, Status Invest, Investidor10).
 - Telas fora da barra (Aporte, Seu mês, Descobrir, Ajustes) têm botão Voltar no topo.
-- **Ajustes** (engrenagem): token, frequência de cotação, aporte e lembrete, custos e lotes, backup, fontes, tema, tour e apagar dados.
+- **Ajustes** (engrenagem): token, frequência de cotação, aporte e lembrete, custos (corretagem, ISS e tarifas da B3) e lotes, backup, fontes, tema, tour e apagar dados.
 
 O estado do usuário fica no `localStorage` (`carteira.v1`, mais `aporte.cfg.v1`, `simulador.cfg.v1` e `marcos.v1`). O backup em JSON não leva o token.
+
+## Custos de compra e venda (`js/core/custos.js`)
+
+Tarifas da B3 (tabela *Tarifação de Produtos de Renda Variável*, versão 3, em vigor desde 08/2025), para quem negocia em média até R$ 3 milhões por dia, fora do day trade, em ações, FIIs e ETFs: negociação (na nota, "Emolumentos") 0,0050%, CCP (na nota, "Taxa de liquidação") 0,0224% e transferência de ativos (TTA) fixada pela B3 por ano entre 0,00135% e 0,00260%; o app usa 0,00225% até o valor de 2026 ser confirmado. Cada tarifa é cortada no centavo: assim o app reproduz uma nota real de R$ 580,47 (R$ 0,13 + 0,02 + 0,01 = R$ 0,16). A B3 calcula sobre o total do dia; o app calcula por ordem, então várias ordens no mesmo dia podem diferir em centavos. Corretagem por ordem e ISS sobre ela são da corretora (Ajustes › Custos). Na venda, o IR retido de 0,005% (só a partir de R$ 1,00) aparece como informação, não como custo. Os custos entram na sugestão de taxas ao registrar e no aporte (as cotas cabem com os custos incluídos; compras + custos + sobra = aporte).
 
 ## Aporte mensal (`js/core/aporte.js`)
 

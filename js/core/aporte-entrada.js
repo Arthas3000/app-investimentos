@@ -88,7 +88,8 @@ export function montarAtivos({ tickers, valores, precos, analises, alvos }) {
 export function validarCfg(cfg, alvos) {
   const e = [];
   if (!(cfg.aporte > 0)) e.push('Informe o valor do aporte, em reais.');
-  if (cfg.taxa == null) e.push('A taxa por ordem precisa ser um valor em reais (pode ser zero).');
+  if (cfg.taxa == null) e.push('A corretagem por ordem precisa ser um valor em reais (pode ser zero).');
+  if (cfg.tarifas === null) e.push('Uma das tarifas da B3 ou o ISS em Ajustes › Custos está inválido. Corrija lá ou use os valores oficiais.');
   if (!(cfg.lote >= 1)) e.push('O lote precisa ser um número inteiro, de 1 em diante.');
   if (cfg.teto === undefined) e.push('O teto precisa ser um percentual de 1 a 100, ou fique sem teto.');
   if (somaUnid(alvos) === 0) e.push('Defina o alvo de pelo menos um ativo, ou use um dos atalhos acima.');
@@ -105,7 +106,7 @@ export function propostaDe({ estado, precos, analises, alvos = estado.alvos, cfg
   const valores = new Map(v.itens.map((i) => [i.ativo, i.valor ?? 0]));
   const ativos = montarAtivos({ tickers, valores, precos, analises, alvos });
   const prop = propor(
-    { aporte: cfg.aporte, taxaPorOrdem: cfg.taxa, lote: cfg.lote, intensidade: cfg.intensidade / 100, teto: cfg.teto, ativos },
+    { aporte: cfg.aporte, taxaPorOrdem: cfg.taxa, custo: cfg.custo ?? null, lote: cfg.lote, intensidade: cfg.intensidade / 100, teto: cfg.teto, ativos },
     { ignorarEvitar: cfg.evitar },
   );
   return { ativos, prop, visao: v };
@@ -115,15 +116,16 @@ export function propostaDe({ estado, precos, analises, alvos = estado.alvos, cfg
  * Recalcula totais e pesos para as cotas escolhidas (cotas: { ticker: n }). Mesma regra de propor():
  * total + taxas + sobra = aporte, taxa só em ativo com ordem. `excede` quando as compras e taxas passam do aporte.
  */
-export function resumir({ ativos, cotas, aporte, taxaPorOrdem }) {
+export function resumir({ ativos, cotas, aporte, taxaPorOrdem = 0, custo = null }) {
+  const custoDe = custo ?? ((v) => (v > 0 ? taxaPorOrdem : 0));
   const V = ativos.reduce((s, a) => s + a.valor, 0);
-  const custo = (a) => (cotas[a.ticker] ?? 0) * (a.preco ?? 0);
-  const total = ativos.reduce((s, a) => s + custo(a), 0);
-  const taxas = ativos.filter((a) => (cotas[a.ticker] ?? 0) > 0).length * taxaPorOrdem;
+  const custo_ = (a) => (cotas[a.ticker] ?? 0) * (a.preco ?? 0);
+  const total = ativos.reduce((s, a) => s + custo_(a), 0);
+  const taxas = ativos.reduce((s, a) => s + custoDe(custo_(a)), 0);
   const V2 = V + total;
   const linhas = ativos.map((a) => ({
-    ticker: a.ticker, cotas: cotas[a.ticker] ?? 0, preco: a.preco, custo: custo(a), alvoPct: a.alvoPct,
-    pesoAntes: V ? (a.valor / V) * 100 : 0, pesoDepois: V2 ? ((a.valor + custo(a)) / V2) * 100 : 0,
+    ticker: a.ticker, cotas: cotas[a.ticker] ?? 0, preco: a.preco, custo: custo_(a), alvoPct: a.alvoPct,
+    pesoAntes: V ? (a.valor / V) * 100 : 0, pesoDepois: V2 ? ((a.valor + custo_(a)) / V2) * 100 : 0,
   }));
   const sobra = aporte - total - taxas;
   return { linhas, total, taxas, sobra, excede: sobra < 0 };

@@ -4,13 +4,15 @@ import { icon } from '../ui/icons.js';
 import { aviso } from '../ui/kit.js';
 import { formatarCentavos, mascaraReais, paraCentavos, soDigitos, hojeIso } from '../ui/registrar.js';
 import { abrirTour } from '../ui/tour.js';
-import { ler, definirAporte, definirPrefs, exportarBackup, importarBackup } from '../data/carteira.js';
+import { ler, definirAporte, exportarBackup, importarBackup } from '../data/carteira.js';
 import { token, prefs, salvarPrefs, aplicarTema, apagarTudo, FREQUENCIAS, TEMAS, frequenciaValida, temaValido } from '../data/store.js';
 import { icsDoAporte } from '../core/aporte-entrada.js';
 import { carregarDados } from '../data/dados.js';
 import { lerCache } from '../data/cache.js';
 import { fmtQuando } from '../data/pregao.js';
 import { lerCfg, cfgNumerica } from './aporte.js';
+import { gravarCfg } from '../data/aporte-cfg.js';
+import { TARIFAS_B3, lerPct, tarifasDe, custosOperacao, pctTotalB3 } from '../core/custos.js';
 import { esc } from './home.js';
 
 // ---------- lógica pura ----------
@@ -26,29 +28,40 @@ export function validarAporte(valorTxt, diaTxt) {
   return erros.length ? { ok: false, erros } : { ok: true, aporte: { valor, dia }, erros };
 }
 
-/** Taxa por ordem (vazia = R$ 0,00) e lote padrão (vazio = 1, inteiro de 1 a 9999). Devolve os textos como o assistente de aporte os guarda. */
-export function validarCustos(taxaTxt, loteTxt) {
+const NOME_TARIFA = { tNeg: 'negociação (emolumentos)', tLiq: 'liquidação', tTta: 'transferência de ativos' };
+
+/**
+ * Corretagem por ordem (vazia = R$ 0,00) e lote padrão (vazio = 1, inteiro de 1 a 9999). Com `extra`, também o ISS
+ * sobre a corretagem (0 a 10%) e as tarifas da B3 em % (0 a 1%; vazia = valor oficial). Devolve os textos como o
+ * assistente de aporte os guarda.
+ */
+export function validarCustos(taxaTxt, loteTxt, extra) {
   const erros = [];
   const t = String(taxaTxt ?? '').trim(), l = String(loteTxt ?? '').trim();
   const taxa = t ? paraCentavos(t) : 0;
   if (taxa == null) erros.push('A taxa por ordem precisa ser um valor em reais (pode ser zero).');
   const lote = l ? (/^\d{1,4}$/.test(l) ? Number(l) : null) : 1;
   if (!(lote >= 1)) erros.push('O lote precisa ser um número inteiro, de 1 em diante.');
-  return erros.length ? { ok: false, erros } : { ok: true, taxa, lote, textos: { taxa: taxa > 0 ? formatarCentavos(taxa) : '', lote: String(lote) }, erros };
+  const textos = { taxa: taxa > 0 ? formatarCentavos(taxa) : '', lote: String(lote) };
+  if (extra) {
+    const iss = lerPct(extra.iss, { max: 10 });
+    if (iss == null) erros.push('O ISS sobre a corretagem é um percentual de 0 a 10 (ex.: 5).');
+    else textos.iss = iss ? String(extra.iss).replace('%', '').trim() : '';
+    for (const k of ['tNeg', 'tLiq', 'tTta']) {
+      const bruto = String(extra[k] ?? '').replace('%', '').trim();
+      if (!bruto) { textos[k] = TARIFAS_B3[k]; continue; }
+      if (lerPct(bruto) == null) erros.push(`A tarifa de ${NOME_TARIFA[k]} é um percentual de 0 a 1 (ex.: ${TARIFAS_B3[k]}).`);
+      else textos[k] = bruto.replace('.', ',');
+    }
+  }
+  return erros.length ? { ok: false, erros } : { ok: true, taxa, lote, textos, erros };
 }
 
 /** 'AAAA-MM-DD' -> 'DD/MM/AAAA'. */
 export const dataBr = (iso) => String(iso ?? '').split('-').reverse().join('/');
 
 // ---------- gravação ----------
-const CHAVE_CFG = 'aporte.cfg.v1';
-// ponytail: o assistente de aporte guarda a cfg em prefs.aporte e numa cópia no localStorage (gravarCfg em aporte.js não é exportado), então repito as duas gravações. Reusar gravarCfg quando for exportado.
-function gravarCustos(textos) {
-  const cfg = { ...lerCfg(), ...textos };
-  const r = definirPrefs({ aporte: cfg });
-  try { localStorage.setItem(CHAVE_CFG, JSON.stringify(cfg)); } catch { return false; }
-  return r.semArmazenamento !== true;
-}
+const gravarCustos = (textos) => gravarCfg(textos);
 
 const SEM_ARMAZENAMENTO = 'Não consegui gravar neste navegador (armazenamento cheio ou bloqueado). Nada foi alterado.';
 const NOME_FONTE = {
@@ -68,7 +81,7 @@ export function montar(root, ctx) {
   const erros = (id, lista) => msg(id, lista.join(' '), true);
 
   function html() {
-    const est = ler(), ap = est.aporte, cfg = cfgNumerica(lerCfg(), ap?.valor), p = prefs(), tk = token.get();
+    const est = ler(), ap = est.aporte, cfg = cfgNumerica(lerCfg(), ap?.valor), cfgT = lerCfg(), p = prefs(), tk = token.get();
     const freq = FREQUENCIAS.map((s) => `<label class="aj__opcao"><input type="radio" name="freq" value="${s}"${p.cotacaoSegundos === s ? ' checked' : ''}><span>${s} s</span></label>`).join('');
     const tema = TEMAS.map((t) => `<label class="aj__opcao"><input type="radio" name="tema" value="${t}"${p.tema === t ? ' checked' : ''}><span>${{ auto: 'Automático', claro: 'Claro', escuro: 'Escuro' }[t]}</span></label>`).join('');
     return `
@@ -104,13 +117,24 @@ export function montar(root, ctx) {
     </section>
 
     <section class="card aj" aria-labelledby="aj-custos"><h2 id="aj-custos">Custos e lotes</h2>
-      <p class="muted">Usados pelo assistente de aporte para calcular quantas cotas cabem no valor.</p>
+      <p class="muted">Usados para sugerir as taxas ao registrar uma compra ou venda e para calcular quantas cotas cabem no aporte.</p>
       <form id="ajCuForm" class="aj__form" novalidate>
         <div class="aj__duas">
-          <div class="field"><label for="ajTaxa">Taxa por ordem</label><input id="ajTaxa" inputmode="numeric" autocomplete="off" placeholder="R$ 0,00" value="${cfg.taxa ? esc(formatarCentavos(cfg.taxa)) : ''}"></div>
-          <div class="field"><label for="ajLote">Lote padrão (cotas por vez)</label><input id="ajLote" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="1" value="${cfg.lote > 1 ? cfg.lote : ''}"></div>
+          <div class="field"><label for="ajTaxa">Corretagem por ordem</label><input id="ajTaxa" inputmode="numeric" autocomplete="off" placeholder="R$ 0,00" value="${cfg.taxa ? esc(formatarCentavos(cfg.taxa)) : ''}"></div>
+          <div class="field"><label for="ajIss">ISS sobre a corretagem (%)</label><input id="ajIss" inputmode="decimal" autocomplete="off" placeholder="0" value="${esc(cfgT.iss ?? '')}"></div>
         </div>
-        <p class="field__hint">Deixe em branco para taxa zero e lote de 1 cota (mercado fracionário).</p>
+        <fieldset class="aj__grupo"><legend>Tarifas da B3 (% do valor de cada ordem)</legend>
+          <div class="aj__tres">
+            <div class="field"><label for="ajNeg">Negociação (emolumentos)</label><input id="ajNeg" inputmode="decimal" autocomplete="off" placeholder="${TARIFAS_B3.tNeg}" value="${esc(cfgT.tNeg)}"></div>
+            <div class="field"><label for="ajLiq">Liquidação</label><input id="ajLiq" inputmode="decimal" autocomplete="off" placeholder="${TARIFAS_B3.tLiq}" value="${esc(cfgT.tLiq)}"></div>
+            <div class="field"><label for="ajTta">Transferência de ativos</label><input id="ajTta" inputmode="decimal" autocomplete="off" placeholder="${TARIFAS_B3.tTta}" value="${esc(cfgT.tTta)}" aria-describedby="ajTtaD"><p class="field__hint" id="ajTtaD">A confirmar: a B3 fixa um valor por ano (entre 0,00135% e 0,00260%).</p></div>
+          </div>
+          <p class="field__hint">Tabela oficial da B3 para quem negocia em média até R$ 3 milhões por dia, fora do day trade; vale para ações, FIIs e ETFs. Cada tarifa é cortada no centavo, como na nota de corretagem.</p>
+          <button class="btn btn--quiet" type="button" id="ajOficial">Usar os valores oficiais da B3</button>
+        </fieldset>
+        <p class="aj__exemplo num" id="ajCuEx" aria-live="polite"></p>
+        <div class="field"><label for="ajLote">Lote padrão (cotas por vez)</label><input id="ajLote" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="1" value="${cfg.lote > 1 ? cfg.lote : ''}"></div>
+        <p class="field__hint">Deixe em branco para corretagem zero e lote de 1 cota (mercado fracionário).</p>
         <div class="aj__acoes"><button class="btn" type="submit">Salvar custos</button></div>
         <p class="aj__msg" id="ajCuMsg" role="status"></p>
       </form>
@@ -221,6 +245,7 @@ export function montar(root, ctx) {
     $('#ajApRemover').hidden = !ap; $('#ajIcs').disabled = !ap;
     $('#ajIcsDica').textContent = ap ? DICA_ICS : 'Salve o valor e o dia do aporte para gerar o lembrete.';
     $('#ajTaxa').value = cfg.taxa ? formatarCentavos(cfg.taxa) : ''; $('#ajLote').value = cfg.lote > 1 ? cfg.lote : '';
+    const t = lerCfg(); $('#ajIss').value = t.iss ?? ''; $('#ajNeg').value = t.tNeg; $('#ajLiq').value = t.tLiq; $('#ajTta').value = t.tTta; exemploCustos();
     $('#ajMetasLink').textContent = Object.keys(ler().metas).length ? 'Editar metas' : 'Definir metas';
   }
   $('#ajApValor').oninput = (e) => { e.target.value = mascaraReais(e.target.value); };
@@ -249,14 +274,26 @@ export function montar(root, ctx) {
   };
 
   // ---------- custos e lotes ----------
-  $('#ajTaxa').oninput = (e) => { e.target.value = mascaraReais(e.target.value); };
+  const extraCustos = () => ({ iss: $('#ajIss').value, tNeg: $('#ajNeg').value, tLiq: $('#ajLiq').value, tTta: $('#ajTta').value });
+  // exemplo vivo: quanto custaria uma compra de R$ 1.000,00 com os números dos campos
+  function exemploCustos() {
+    const t = tarifasDe({ taxa: $('#ajTaxa').value, ...extraCustos() }, paraCentavos);
+    if ([t.negociacao, t.liquidacao, t.tta, t.iss, t.corretagem].some((x) => x == null)) { $('#ajCuEx').textContent = ''; return; }
+    const c = custosOperacao(100000, t);
+    $('#ajCuEx').textContent = `Numa compra de R$ 1.000,00: tarifas da B3 de ${formatarCentavos(c.b3)} (${pctTotalB3(t).toLocaleString('pt-BR', { maximumFractionDigits: 5 })}% de tabela)${c.corretagem ? ` + corretagem ${formatarCentavos(c.corretagem)}${c.iss ? ` + ISS ${formatarCentavos(c.iss)}` : ''}` : ''} = ${formatarCentavos(c.total)}.`;
+  }
+  exemploCustos();
+  $('#ajTaxa').oninput = (e) => { e.target.value = mascaraReais(e.target.value); exemploCustos(); };
+  for (const id of ['#ajIss', '#ajNeg', '#ajLiq', '#ajTta']) $(id).oninput = (e) => { e.target.value = e.target.value.replace(/[^\d.,%]/g, '').slice(0, 9); exemploCustos(); };
+  $('#ajOficial').onclick = () => { $('#ajNeg').value = TARIFAS_B3.tNeg; $('#ajLiq').value = TARIFAS_B3.tLiq; $('#ajTta').value = TARIFAS_B3.tTta; exemploCustos(); msg('ajCuMsg', 'Valores oficiais da B3 nos campos. Toque em “Salvar custos” para guardar.'); };
   $('#ajLote').oninput = (e) => { e.target.value = soDigitos(e.target.value).slice(0, 4); };
   $('#ajCuForm').onsubmit = (e) => {
     e.preventDefault();
-    const v = validarCustos($('#ajTaxa').value, $('#ajLote').value);
+    const v = validarCustos($('#ajTaxa').value, $('#ajLote').value, extraCustos());
     if (!v.ok) return erros('ajCuMsg', v.erros);
     if (!gravarCustos(v.textos)) return erros('ajCuMsg', [SEM_ARMAZENAMENTO]);
-    msg('ajCuMsg', `Salvo: taxa ${formatarCentavos(v.taxa)} por ordem e lote de ${v.lote} ${v.lote === 1 ? 'cota' : 'cotas'}.`);
+    $('#ajNeg').value = v.textos.tNeg; $('#ajLiq').value = v.textos.tLiq; $('#ajTta').value = v.textos.tTta;
+    msg('ajCuMsg', `Salvo: corretagem ${formatarCentavos(v.taxa)} por ordem, tarifas da B3 de ${v.textos.tNeg}% + ${v.textos.tLiq}% + ${v.textos.tTta}% e lote de ${v.lote} ${v.lote === 1 ? 'cota' : 'cotas'}.`);
   };
 
   // ---------- backup ----------

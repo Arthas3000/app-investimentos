@@ -56,22 +56,27 @@ export function waterFilling(itens, aporte) {
 }
 
 /**
- * Converte o alocado em lotes inteiros. A taxa sai do próprio alocado: cotas = piso((alocado − taxa) ÷ (preço × lote)) × lote.
- * Com o troco, um lote a mais por vez para quem fica mais abaixo do alvo, enquanto couber (taxa e teto incluídos).
+ * Converte o alocado em lotes inteiros. Os custos da ordem saem do próprio alocado: o maior número de lotes com
+ * cotas × preço + custo(cotas × preço) <= alocado. `custo(valor)` = custo total da ordem (0 sem ordem): taxa fixa por
+ * ordem e/ou tarifas percentuais da B3 (core/custos.js). Um número no lugar da função = taxa fixa por ordem.
+ * Com o troco, um lote a mais por vez para quem fica mais abaixo do alvo, enquanto couber (custos e teto incluídos).
  * itens: [{ticker, nec, valor, preco, lote, alvoAbs, tetoAbs}] -> {cotas, troco}
  */
-export function paraLotes(itens, alloc, aporte, taxa) {
+export function paraLotes(itens, alloc, aporte, custo) {
+  if (typeof custo !== 'function') { const t = custo ?? 0; custo = (v) => (v > 0 ? t : 0); }
+  const comCusto = (a, n) => n * a.preco + custo(n * a.preco);
   const cotas = itens.map((a, i) => {
-    const livre = alloc[i] - taxa;
-    return livre > 0 ? Math.floor(livre / (a.preco * a.lote)) * a.lote : 0;
+    let lotes = Math.floor(alloc[i] / (a.preco * a.lote));
+    while (lotes > 0 && comCusto(a, lotes * a.lote) > alloc[i]) lotes--;
+    return lotes * a.lote;
   });
-  const gasto = () => itens.reduce((t, a, i) => t + cotas[i] * a.preco + (cotas[i] > 0 ? taxa : 0), 0);
+  const gasto = () => itens.reduce((t, a, i) => t + comCusto(a, cotas[i]), 0);
   let troco = aporte - gasto();
   for (;;) {
     const cand = itens
       .map((a, i) => {
         const tem = a.valor + cotas[i] * a.preco, lote = a.preco * a.lote;
-        return { ...a, i, falta: a.alvoAbs - tem, custo: lote + (cotas[i] > 0 ? 0 : taxa), cabeTeto: tem + lote <= a.tetoAbs };
+        return { ...a, i, falta: a.alvoAbs - tem, custo: comCusto(a, cotas[i] + a.lote) - comCusto(a, cotas[i]), cabeTeto: tem + lote <= a.tetoAbs };
       })
       .filter((c) => c.falta > 0 && c.cabeTeto && c.custo <= troco)
       .sort((a, b) => b.falta - a.falta || desempate(a, b));
@@ -92,8 +97,10 @@ const inteiro = (n, nome, min = 0) => {
  * -> {linhas:[{ticker, cotas, preco, custo, pesoAntes, pesoDepois, alvoPct, motivo}], total, taxas, sobra, avisos}
  * Linhas: todos os ativos, em ordem de ticker (cotas 0 para quem não recebe). Pesos em % (0..100).
  */
-export function propor({ aporte, taxaPorOrdem = 0, lote = 1, intensidade = 0.5, teto = null, ativos }, { ignorarEvitar = true } = {}) {
+export function propor({ aporte, taxaPorOrdem = 0, custo = null, lote = 1, intensidade = 0.5, teto = null, ativos }, { ignorarEvitar = true } = {}) {
   inteiro(aporte, 'aporte'); inteiro(taxaPorOrdem, 'taxa'); inteiro(lote, 'lote', 1);
+  // custo da ordem pelo valor (taxa fixa + tarifas da B3); sem a função, só a taxa fixa por ordem
+  const custoDe = custo ?? ((v) => (v > 0 ? taxaPorOrdem : 0));
   const todos = [...ativos].sort(porTicker); // ordem de entrada não muda nada
   const V = todos.reduce((t, a) => (inteiro(a.valor, `valor de ${a.ticker}`), t + a.valor), 0);
   const T = V + aporte;
@@ -114,7 +121,7 @@ export function propor({ aporte, taxaPorOrdem = 0, lote = 1, intensidade = 0.5, 
   const rec = itens.filter((a) => a.cap > 0);
   fatores(rec, intensidade).forEach((f, k) => { rec[k].peso = BigInt(rec[k].nec) * BigInt(Math.round(f * ESCALA)); });
   const alloc = waterFilling(rec, aporte);
-  const { cotas, troco } = paraLotes(rec, alloc, aporte, taxaPorOrdem);
+  const { cotas, troco } = paraLotes(rec, alloc, aporte, custoDe);
   rec.forEach((a, k) => { a.cotas = cotas[k]; });
 
   const total = itens.reduce((t, a) => t + (a.cotas ?? 0) * a.preco, 0) || 0;
@@ -125,7 +132,7 @@ export function propor({ aporte, taxaPorOrdem = 0, lote = 1, intensidade = 0.5, 
     const pesoDepois = V2 ? ((a.valor + custo) / V2) * 100 : 0;
     return { ticker: a.ticker, cotas: n, preco: a.preco ?? null, custo, pesoAntes, pesoDepois, alvoPct: a.alvoPct, motivo: motivo(a, n, pesoAntes) };
   });
-  const taxas = rec.filter((a) => a.cotas > 0).length * taxaPorOrdem;
+  const taxas = rec.reduce((t, a) => t + custoDe(a.cotas * a.preco), 0);
   return { linhas, total, taxas, sobra: troco, avisos };
 }
 
