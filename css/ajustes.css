@@ -72,3 +72,10 @@ dialog.tour-guia:has(.tour-guia__anel[hidden]) { background: var(--scrim); } /* 
 }
 .tour-convite div { display: flex; gap: var(--s2); justify-content: flex-end; }
 @media (min-width: 900px) { .tour-convite { left: 216px; right: auto; bottom: var(--s4); margin: 0; } }
+
+/* custos: três tarifas lado a lado quando couber; exemplo de quanto custa uma compra */
+.aj__tres { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s3); }
+@media (min-width: 560px) { .aj__tres { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; } }
+.aj__exemplo { font-size: var(--fs-sm); padding: var(--s3); border-radius: var(--r-md); background: var(--surface-2); }
+.aj__exemplo:empty { display: none; }
+#ajOficial { justify-self: start; }

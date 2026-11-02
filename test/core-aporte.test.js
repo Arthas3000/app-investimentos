@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { propor, fatores, waterFilling, necessidades } from '../js/core/aporte.js';
+import { custoOrdem, tarifasDe } from '../js/core/custos.js';
 
 const at = (ticker, o = {}) => ({ ticker, valor: 0, alvoPct: 50, preco: 1000, nota: null, ms: null, evitar: false, ...o });
 const cotas = (r) => Object.fromEntries(r.linhas.map((l) => [l.ticker, l.cotas]));
@@ -62,6 +63,15 @@ test('lote 100', () => {
   assert.equal(r.sobra, 100000);
   // lote por ativo sobrepõe o global: B com lote 1 -> 120 cotas (300000/2500)
   assert.deepEqual(cotas(propor({ aporte: 600000, lote: 100, ativos: [at('A', { preco: 2500 }), at('B', { preco: 2500, lote: 1 })] })), { A: 100, B: 120 });
+});
+
+test('tarifas percentuais: o custo sai do alocado e compras + custos + sobra = aporte', () => {
+  // R$ 1.000 para um ativo de R$ 10,00: 100 cotas custariam R$ 1.000 + R$ 0,29 de tarifas; cabem 99
+  const custo = custoOrdem(tarifasDe({}));
+  const r = propor({ aporte: 100000, custo, ativos: [at('A', { alvoPct: 100 })] });
+  assert.deepEqual(cotas(r), { A: 99 });
+  assert.equal(r.taxas, custo(99000)); // 22 + 4 + 2 = R$ 0,28
+  assert.equal(r.total + r.taxas + r.sobra, 100000);
 });
 
 test('taxa por ordem', () => {
@@ -140,6 +150,8 @@ test('propriedades em 500 casos aleatórios', () => {
       aporte: int(0, 2_000_000), taxaPorOrdem: r() < 0.5 ? 0 : int(0, 1000), lote: r() < 0.2 ? 100 : 1,
       intensidade: r(), teto: r() < 0.4 ? int(5, 60) : null, ativos,
     };
+    // metade dos casos com as tarifas percentuais da B3 (e às vezes corretagem): custo depende do valor da ordem
+    if (r() < 0.5) entrada.custo = custoOrdem({ ...tarifasDe({}), corretagem: r() < 0.5 ? 0 : int(0, 1000), iss: r() < 0.5 ? 0 : 5 });
     const opc = { ignorarEvitar: r() < 0.8 };
     const res = propor(entrada, opc);
     fecha(res, entrada.aporte);

@@ -4,7 +4,7 @@ import { icon } from '../ui/icons.js';
 import { botaoAjuda, ligarAjuda } from '../ui/ajuda.js';
 import { aviso, vibrar } from '../ui/kit.js';
 import { formatarCentavos, mascaraReais, paraCentavos, paraInteiro, soDigitos, listaDePrecos, hojeIso } from '../ui/registrar.js';
-import { ler, definirAlvo, definirAporte, definirPrefs, adicionarTransacao } from '../data/carteira.js';
+import { ler, definirAlvo, definirAporte, adicionarTransacao } from '../data/carteira.js';
 import { visaoCarteira } from '../core/carteira-calc.js';
 import { centavos } from '../core/money.js';
 import {
@@ -17,27 +17,20 @@ import { ultimos, SERIES } from '../data/bcb.js';
 import { analisar, montarCtx } from '../analise/analisar.js';
 import { esc, seloFaixa } from './home.js';
 
-// ---------- configuração guardada ----------
-// ponytail: definirPrefs aceita qualquer chave, mas validarEstado (data/carteira.js) só relê ocultarValores e
-// primeirosPassosDispensados ao recarregar a página; por isso uma cópia vai também para uma chave própria. Tirar a cópia quando a carteira passar a guardar `prefs.aporte`.
-const CHAVE_CFG = 'aporte.cfg.v1';
-const CFG0 = { valor: '', teto: '', intensidade: 50, taxa: '', lote: '1', evitar: true };
-
-export function lerCfg() {
-  const dentro = ler().prefs.aporte;
-  if (dentro && typeof dentro === 'object') return { ...CFG0, ...dentro };
-  try { return { ...CFG0, ...JSON.parse(localStorage.getItem(CHAVE_CFG) || '{}') }; } catch { return { ...CFG0 }; }
-}
-function gravarCfg(c) {
-  definirPrefs({ aporte: c });
-  try { localStorage.setItem(CHAVE_CFG, JSON.stringify(c)); } catch { /* sem armazenamento: vale só nesta visita */ }
-}
+// ---------- configuração guardada (data/aporte-cfg.js; reexportada para quem já importava daqui) ----------
+import { lerCfg, gravarCfg } from '../data/aporte-cfg.js';
+import { tarifasDe, custoOrdem, pctTotalB3 } from '../core/custos.js';
+export { lerCfg };
+const fmtPctB3 = () => { const t = tarifasDe(lerCfg()); return [t.negociacao, t.liquidacao, t.tta].some((x) => x == null) ? 'um percentual' : `${pctTotalB3(t).toLocaleString('pt-BR', { maximumFractionDigits: 5 })}%`; };
 
 /** Textos digitados -> números para propor(): taxa vazia = 0, lote vazio = 1, teto vazio = sem teto; inválido vira null/undefined (validarCfg explica). */
 export function cfgNumerica(t, aporte) {
   const teto = t.teto.trim() ? (paraPct(t.teto) > 0 ? paraPct(t.teto) : undefined) : null;
+  // tarifas da B3 e ISS vêm de Ajustes (t pode ser só o rascunho do passo 1, sem esses campos)
+  const tarifas = tarifasDe({ ...lerCfg(), ...t }, paraCentavos);
+  const okTar = [tarifas.negociacao, tarifas.liquidacao, tarifas.tta, tarifas.iss, tarifas.corretagem].every((x) => x != null);
   return {
-    aporte: aporte ?? 0,
+    aporte: aporte ?? 0, tarifas: okTar ? tarifas : null, custo: okTar ? custoOrdem(tarifas) : null,
     taxa: t.taxa.trim() ? paraCentavos(t.taxa) : 0,
     lote: t.lote.trim() ? paraInteiro(t.lote) : 1,
     teto, intensidade: Number(t.intensidade), evitar: !!t.evitar,
@@ -232,7 +225,7 @@ export function montar(root, ctx) {
           <p class="field__hint" id="apIntD">Em 0% o aporte segue só os alvos. Quanto mais alto, mais cotas vão para ativos com nota de valor melhor e preço mais barato, sem passar do alvo. ${botaoAjuda('intensidade')}</p>
           <p class="ap-legenda">Faixa de preço, comparada com o histórico do próprio ativo: ${seloFaixa(['barato', 'Barato'])} ${seloFaixa(['normal', 'Normal'])} ${seloFaixa(['caro', 'Caro'])}</p></div>
         <div class="reg__duo">
-          <div class="field"><label for="apTaxa">Taxa por ordem</label><input id="apTaxa" inputmode="numeric" autocomplete="off" placeholder="R$ 0,00" value="${esc(S.taxa)}"></div>
+          <div class="field"><label for="apTaxa">Corretagem por ordem</label><input id="apTaxa" inputmode="numeric" autocomplete="off" placeholder="R$ 0,00" value="${esc(S.taxa)}" aria-describedby="apTaxaD"><p class="field__hint" id="apTaxaD">As tarifas da B3 (${fmtPctB3()} do valor de cada ordem) já entram na conta. Ajuste em Ajustes › Custos.</p></div>
           <div class="field"><label for="apLote">Lote (cotas por vez)</label><input id="apLote" inputmode="numeric" autocomplete="off" placeholder="1" maxlength="4" value="${esc(S.lote)}" aria-describedby="apLoteD"><p class="field__hint" id="apLoteD">Menor quantidade negociável. ${botaoAjuda('lote')}</p></div>
         </div>
         <label class="ap-check"><input type="checkbox" id="apEvitar" ${S.evitar ? 'checked' : ''}><span>Não propor ativos com Sinais de alerta</span></label>
@@ -311,7 +304,7 @@ export function montar(root, ctx) {
     for (const i of itensAlvo()) definirAlvo(i.ativo, c.valores[i.ativo] ?? null);
     const salvo = ler().aporte;
     if (c.aporte > 0 && (c.dia || salvo)) definirAporte({ valor: c.aporte, dia: c.dia ?? salvo.dia });
-    gravarCfg({ valor: S.valor, teto: S.teto, intensidade: S.intensidade, taxa: S.taxa, lote: S.lote, evitar: S.evitar });
+    gravarCfg({ valor: S.valor, teto: S.teto, intensidade: S.intensidade, taxa: S.taxa, lote: S.lote, evitar: S.evitar }); // mantém tarifas e ISS
     try { sessionStorage.removeItem(RASCUNHO); } catch { /* ok */ } // confirmado: agora vale o que foi salvo
     try {
       const r = propostaDe({ estado: ler(), precos: D.precos, analises: D.analises, alvos: c.valores, cfg: c.cfg });
@@ -326,7 +319,7 @@ export function montar(root, ctx) {
   }
 
   // ---------- passo 2: revisar ----------
-  const resumo = () => resumir({ ativos: S.ativos, cotas: S.cotas, aporte: S.cfgN.aporte, taxaPorOrdem: S.cfgN.taxa });
+  const resumo = () => resumir({ ativos: S.ativos, cotas: S.cotas, aporte: S.cfgN.aporte, taxaPorOrdem: S.cfgN.taxa, custo: S.cfgN.custo });
 
   function linhaRev(l, motivos) {
     const a = S.ativos.find((x) => x.ticker === l.ticker), ajustou = S.cotas[l.ticker] !== S.orig[l.ticker];
@@ -390,7 +383,8 @@ export function montar(root, ctx) {
       if (n <= 0) { delete S.compra[l.ticker]; continue; }
       if (c && c.base === n) continue; // a pessoa já mexeu nesta linha e a proposta não mudou
       const a = S.ativos.find((x) => x.ticker === l.ticker);
-      S.compra[l.ticker] = { base: n, qtd: String(n), preco: formatarCentavos(a.preco), taxas: S.cfgN.taxa ? formatarCentavos(S.cfgN.taxa) : '' };
+      const tx = S.cfgN.custo ? S.cfgN.custo(n * a.preco) : S.cfgN.taxa; // estimativa: corretagem + tarifas da B3
+      S.compra[l.ticker] = { base: n, qtd: String(n), preco: formatarCentavos(a.preco), taxas: tx ? formatarCentavos(tx) : '' };
     }
   }
   const lido = (t) => {
