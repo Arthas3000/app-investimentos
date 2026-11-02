@@ -1,0 +1,64 @@
+name: Sondagem de fontes (temporário)
+
+# Só lê e imprime no log: formato, colunas e licença das fontes oficiais candidatas. Não grava nada.
+# Roda quando este arquivo muda no branch de desenvolvimento. Será apagado depois.
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['.github/workflows/sondagem.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sondar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Licenças dos conjuntos da CVM (API CKAN)
+        run: |
+          for id in fii-doc-inf_trimestral fii-doc-inf_mensal cia_aberta-doc-dfp cia_aberta-doc-fca; do
+            echo "== $id"
+            curl -sS -m 60 "https://dados.cvm.gov.br/api/3/action/package_show?id=$id" \
+              | python3 -c "import sys,json; r=json.load(sys.stdin)['result']; print('licença:', r.get('license_title'), r.get('license_url')); print('recursos:', [x.get('name') for x in r.get('resources', [])][:12])" || echo FALHOU
+          done
+
+      - name: CVM informe trimestral de FII (arquivos e colunas)
+        run: |
+          mkdir -p t && cd t
+          ano=$(date -u +%Y)
+          curl -sSf -m 120 -o it.zip "https://dados.cvm.gov.br/dados/FII/DOC/INF_TRIMESTRAL/DADOS/inf_trimestral_fii_${ano}.zip" \
+            || curl -sSf -m 120 -o it.zip "https://dados.cvm.gov.br/dados/FII/DOC/INF_TRIMESTRAL/DADOS/inf_trimestral_fii_$((ano-1)).zip"
+          unzip -o -q it.zip && ls -la
+          for f in *.csv; do echo "== $f ($(wc -l < "$f") linhas)"; head -3 "$f" | iconv -f latin1 -t utf-8 | cut -c1-1500; done
+          echo "== dicionário"; curl -sS -m 60 "https://dados.cvm.gov.br/dados/FII/DOC/INF_TRIMESTRAL/META/" | grep -o 'href="[^"]*"' | head -20
+
+      - name: B3 proventos e eventos de empresa (PETR, ITUB)
+        run: |
+          for emp in PETR ITUB; do
+            q=$(printf '{"issuingCompany":"%s","language":"pt-br"}' "$emp" | base64 -w0)
+            echo "== $emp GetListedSupplementCompany"
+            curl -sS -m 60 -A "Mozilla/5.0" "https://sistemaswebb3-listados.b3.com.br/listedCompaniesProxy/CompanyCall/GetListedSupplementCompany/$q" | cut -c1-2500; echo
+          done
+          q=$(printf '{"language":"pt-br","pageNumber":1,"pageSize":20,"tradingName":"PETR"}' | base64 -w0)
+          echo "== GetCompanyCashDividends? (tentativa)"
+          curl -sS -m 60 -A "Mozilla/5.0" -o /dev/null -w "%{http_code}\n" "https://sistemaswebb3-listados.b3.com.br/listedCompaniesProxy/CompanyCall/GetListedCashDividends/$q"
+
+      - name: B3 proventos de FII (HGLG)
+        run: |
+          for corpo in '{"typeFund":7,"cnpj":"0","identifierFund":"HGLG"}' '{"cnpj":"0","identifierFund":"HGLG","typeFund":7}'; do
+            q=$(printf '%s' "$corpo" | base64 -w0)
+            echo "== GetListedSupplementFunds $corpo"
+            curl -sS -m 60 -A "Mozilla/5.0" "https://sistemaswebb3-listados.b3.com.br/fundsProxy/fundsCall/GetListedSupplementFunds/$q" | cut -c1-2500; echo
+          done
+
+      - name: Termos e robots da B3
+        run: |
+          curl -sS -m 30 -A "Mozilla/5.0" https://sistemaswebb3-listados.b3.com.br/robots.txt | head -20 || true
+          curl -sS -m 30 -A "Mozilla/5.0" https://www.b3.com.br/robots.txt | head -30 || true
+
+      - name: IBGE SIDRA (IPCA, conferência do BCB)
+        run: |
+          curl -sS -m 60 "https://apisidra.ibge.gov.br/values/t/1737/n1/all/v/63/p/last%203" | cut -c1-1200; echo
+          curl -sS -m 60 "https://api.bcb.gov.br/dados/serie/bcdata.sgs.433/dados/ultimos/3?formato=json"; echo
