@@ -184,3 +184,15 @@ test('resumoResultado: menos de 4 trimestres seguidos, sem cotas ou resultado <=
   assert.equal(neg.ffo, -6); // FFO negativo é informação, fica
   assert.equal(neg.pctVendaImoveis, null); // sem resultado positivo não há parcela
 });
+
+test('montarFii: rendimento de 12 meses da B3 (valor anunciado por cota) tem prioridade; a CVM fica de reserva', () => {
+  const comp = Array.from({ length: 13 }, (_, i) => ({
+    Data_Referencia: data(i), Valor_Patrimonial_Cotas: '100', Percentual_Dividend_Yield_Mes: '0.01',
+    Percentual_Rentabilidade_Patrimonial_Mes: '0', Valor_Ativo: '1000', Cotas_Emitidas: '50',
+  }));
+  const comB3 = montarFii({ cnpj: '1', nome: 'X', comp, ap: [], rendB3: 9.72 });
+  assert.deepEqual([comB3.rend12m, comB3.rend12mCvm, comB3.fonteRend], [9.72, 12, 'B3']);
+  const semB3 = montarFii({ cnpj: '1', nome: 'X', comp, ap: [] });
+  assert.deepEqual([semB3.rend12m, semB3.rend12mCvm, semB3.fonteRend], [12, 12, 'CVM']);
+  assert.equal(montarFii({ cnpj: '1', nome: 'X', comp, ap: [], rendB3: 0 }).fonteRend, 'CVM'); // zero na B3 = sem anúncio: fica a CVM
+});

@@ -3,7 +3,7 @@
 // antigos e o app passa a usar os arquivos novos. Arquivo novo/removido em css/ ou js/ também precisa entrar/sair
 // de PRECACHE (o `npm test` falha se a lista e o disco divergirem). Dados (dados/*.json, dados/precos/*) não
 // dependem da versão: são atualizados sozinhos em segundo plano.
-const VERSAO = 'v8';
+const VERSAO = 'v9';
 const CACHE = `aportes-${VERSAO}`;
 
 const PRECACHE = [

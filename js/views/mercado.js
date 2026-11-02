@@ -366,8 +366,8 @@ function conferenciaHtml(conf, classe, codigo) {
     const c = conf?.fiis?.[codigo];
     if (!c) return '';
     return c.ok && !c.divergentes
-      ? `<p class="conf conf--ok">${icon('check', 16)}<span>Rendimentos conferidos: CVM e B3 batem nos ${c.comparados} meses comparados.</span></p>`
-      : `<p class="conf ${c.ok ? 'conf--ok' : 'conf--div'}">${icon(c.ok ? 'check' : 'alert', 16)}<span>${c.ok ? 'Rendimentos conferidos com ressalva' : 'Atenção: fontes divergem'}: CVM e B3 diferem em ${c.divergentes} de ${c.comparados} meses (até ${pc(c.maxDif)}). O app usa os números da CVM.</span></p>`;
+      ? `<p class="conf conf--ok">${icon('check', 16)}<span>Rendimentos conferidos: o anunciado à B3 e o informe mensal da CVM batem nos ${c.comparados} meses comparados.</span></p>`
+      : `<p class="conf ${c.ok ? 'conf--ok' : 'conf--div'}">${icon(c.ok ? 'check' : 'alert', 16)}<span>${c.ok ? 'Rendimentos conferidos com ressalva' : 'Atenção: fontes divergem'}: o rendimento calculado pelo informe mensal da CVM difere do anunciado à B3 em ${c.divergentes} de ${c.comparados} meses (até ${pc(c.maxDif)}). O app usa o valor anunciado à B3.</span></p>`;
   }
   const c = conf?.acoes?.[codigo];
   if (!c) return '';
@@ -454,7 +454,7 @@ function analiseHtml({ a, d, arquivo, classe, codigo, fund, base, preco, pr, pro
     <section class="card an" aria-labelledby="h-fu"><h3 id="h-fu">Principais fundamentos</h3>
       <dl class="kv">${principais.map(([n, v]) => `<div><dt>${n}${botaoAjuda(AJUDA_TERMO[n])}</dt><dd class="num">${dd(v)}</dd></div>`).join('')}</dl>
       ${conferenciaHtml(conf, classe, codigo)}
-      <p class="src">${classe === 'fii' ? `Informe mensal do fundo de ${dataBase}${fund.dataBaseTri ? ` e trimestral de ${dataIso(fund.dataBaseTri)}` : ''}` : `Demonstrações da empresa de ${dataBase}`} (CVM)${classe === 'fii' ? '' : '; proventos e payout: B3'}. Risco calculado com preços até ${dataIso(risco?.dataBase)} (B3, COTAHIST). Arquivo gerado em ${fmtQuando(new Date(geradoEm))}. “—” é dado não disponível: o cálculo se adapta.${aprox}</p></section>
+      <p class="src">${classe === 'fii' ? `Informe mensal do fundo de ${dataBase}${fund.dataBaseTri ? ` e trimestral de ${dataIso(fund.dataBaseTri)}` : ''}` : `Demonstrações da empresa de ${dataBase}`} (CVM)${classe === 'fii' ? (fund.fonteRend === 'B3' ? '; rendimentos: B3' : '') : '; proventos e payout: B3'}. Risco calculado com preços até ${dataIso(risco?.dataBase)} (B3, COTAHIST). Arquivo gerado em ${fmtQuando(new Date(geradoEm))}. “—” é dado não disponível: o cálculo se adapta.${aprox}</p></section>
     ${proventosHtml(prov, provOk, codigo, classe)}
     ${AVISO}`;
 }

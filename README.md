@@ -59,7 +59,7 @@ Demonstrações consolidadas, versão mais recente. Razões em fração.
 
 ### FIIs (`scripts/atualizar-fiis.mjs`)
 
-VPA e cotas do informe do último mês. Alavancagem = passivo ÷ ativo. Rendimento por cota do mês = DY do mês × VPA do mês anterior; `rend12m` só existe com 12 meses completos. Segmento: tijolo se ao menos 60% do investido está em imóveis e fundos imobiliários, papel se em CRI, LCI e similares, senão híbrido.
+VPA e cotas do informe do último mês. `rend12m` = soma dos rendimentos anunciados à B3 por cota com data com nos últimos 12 meses (`fonteRend: "B3"`); sem eles, o cálculo pelo informe mensal (`rend12mCvm`, `fonteRend: "CVM"`), que erra em fundo que emitiu cotas no período. Alavancagem = passivo ÷ ativo. Rendimento por cota do mês (CVM) = DY do mês × VPA do mês anterior; `rend12mCvm` só existe com 12 meses completos. Segmento: tijolo se ao menos 60% do investido está em imóveis e fundos imobiliários, papel se em CRI, LCI e similares, senão híbrido.
 
 Informe trimestral: FFO 12m por cota (aproximação) = soma dos 4 últimos trimestres de `Resultado_Trimestral_Liquido_Financeiro` menos `Receita_Venda_Investimento_Financeiro`, ÷ cotas; venda de imóveis = essa receita ÷ o resultado. Vacância e inadimplência = média dos imóveis para renda acabados do último trimestre, ponderada pela parcela da receita do fundo (sem ela, pela área); nº de imóveis = quantos são. Colunas acumuladas no semestre (`Rendimentos_Declarados`, `Resultado_Financeiro_Liquido_Acumulado`) não são somadas.
 
