@@ -1,4 +1,4 @@
-// Orquestrador: roda precos, fundamentos e FIIs em sequência e grava dados/meta.json.
+// Orquestrador: roda proventos, preços, fundamentos, FIIs e a conferência entre fontes, em sequência, e grava dados/meta.json.
 // Uso: node scripts/atualizar-dados.mjs
 // Tolera falha de UMA fonte: o script filho só grava no fim, então o JSON anterior fica; o erro vai para meta.json.
 // Sem diff inútil: se um arquivo só mudou em `geradoEm`, o conteúdo anterior é restaurado (inclusive o meta.json).
@@ -16,10 +16,13 @@ mkdirSync(join(raiz, 'dados'), { recursive: true }); // primeira execução: a p
 const lerOuNull = (f) => (existsSync(f) ? readFileSync(f, 'utf8') : null);
 const semGerado = (t) => t?.replace(/"geradoEm":\s*"[^"]*"/, '"geradoEm":""');
 
+// Ordem: proventos antes (eventos em ações ajustam os preços; proventos dão o payout); conferência por último.
 const fontes = [
+  { nome: 'proventos', url: 'https://sistemaswebb3-listados.b3.com.br/', script: 'atualizar-proventos.mjs', args: [], arq: 'proventos.json' },
   { nome: 'precos', url: 'https://bvmf.bmfbovespa.com.br/InstDados/SerHist/', script: 'atualizar-precos.mjs', args: [`--cache=${cache}`], arq: 'risco.json' },
   { nome: 'fundamentos', url: 'https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/', script: 'atualizar-fundamentos.mjs', args: ['--cache', cache], arq: 'fundamentos.json' },
-  { nome: 'fiis', url: 'https://dados.cvm.gov.br/dados/FII/DOC/INF_MENSAL/', script: 'atualizar-fiis.mjs', args: [], arq: 'fiis.json' },
+  { nome: 'fiis', url: 'https://dados.cvm.gov.br/dados/FII/DOC/', script: 'atualizar-fiis.mjs', args: [], arq: 'fiis.json' },
+  { nome: 'conferencia', url: 'https://apisidra.ibge.gov.br/', script: 'conferir-fontes.mjs', args: [], arq: 'conferencia.json' },
 ];
 
 const resultado = {};

@@ -120,3 +120,67 @@ test('dados/fiis.json gerado segue o contrato', () => {
     assert.ok(f.alavancagem >= 0 && f.alavancagem <= 1);
   }
 });
+
+// ---------- informe trimestral (imóveis e resultado), com linhas reais do arquivo de 2026 ----------
+import { resumoImoveis, fracao } from '../scripts/atualizar-fiis.mjs';
+
+const CAB_IMOVEL = 'CNPJ_Fundo_Classe;Data_Referencia;Versao;Classe;Nome_Imovel;Endereco;Area;Numero_Unidades;Outras_Caracteristicas_Relevantes;Percentual_Vacancia;Percentual_Inadimplencia;Percentual_Receitas_FII;Percentual_Locado;Percentual_Vendido;Percentual_Conclusao_Obras_Realizado;Percentual_Conclusao_Obras_Previsto;Custo_Construcao_Realizado;Custo_Construcao_Previsto;Percentual_Imovel_Total_Investido';
+
+test('fracao: aceita fração; percentual (até 100) vira fração; resto é null', () => {
+  assert.equal(fracao('0.103933'), 0.103933);
+  assert.equal(fracao('10.5'), 0.105);
+  assert.equal(fracao(''), null);
+  assert.equal(fracao('250'), null);
+  assert.equal(fracao('-0.1'), null);
+});
+
+test('resumoImoveis: só o trimestre mais recente e só imóveis para renda acabados', () => {
+  const linhas = lerCsv([CAB_IMOVEL,
+    '00.332.266/0001-31;2026-03-31;1;Imóveis para renda acabados;Via Parque Shopping - 100%;Av. Ayrton Senna, 3000;56484.83;188;-;0.103933;0.106526;0.97281199403743;;;;;;;',
+    '00.332.266/0001-31;2026-06-30;1;Imóveis para renda acabados;Via Parque Shopping - 100%;Av. Ayrton Senna, 3000;56484.83;189;-;0.169062;0.014417;0.967897;;;;;;;',
+    '00.332.266/0001-31;2026-06-30;1;Imóveis para renda acabados;Galpão B;Rua X;10000;1;-;0;0;0.032103;;;;;;;',
+    '00.332.266/0001-31;2026-06-30;1;Imóveis para venda em construção;Torre C;Rua Y;5000;10;-;;;0;;;;;;;',
+  ].join('\n'));
+  const r = resumoImoveis(linhas);
+  assert.equal(r.dataBase, '2026-06-30');
+  assert.equal(r.nImoveis, 2);
+  // vacância ponderada pela parcela da receita: 0,169062 × 0,967897 + 0 × 0,032103, sobre 1
+  assert.ok(Math.abs(r.vacancia - 0.169062 * 0.967897) < 1e-6);
+  assert.ok(Math.abs(r.inadimplencia - 0.014417 * 0.967897) < 1e-6);
+});
+
+test('resumoImoveis: sem receita informada pondera pela área; sem imóvel de renda devolve nulls', () => {
+  const r = resumoImoveis(lerCsv([CAB_IMOVEL,
+    'X;2026-06-30;1;Imóveis para renda acabados;A;-;100;1;-;0.2;;;;;;;;;',
+    'X;2026-06-30;1;Imóveis para renda acabados;B;-;300;1;-;0;;;;;;;;;',
+  ].join('\n')));
+  assert.ok(Math.abs(r.vacancia - 0.05) < 1e-9); // (0,2×100 + 0×300) / 400
+  assert.equal(r.inadimplencia, null);
+  assert.deepEqual(resumoImoveis([]), { dataBase: null, nImoveis: null, vacancia: null, inadimplencia: null });
+});
+
+import { resumoResultado } from '../scripts/atualizar-fiis.mjs';
+
+test('resumoResultado: FFO de 12 meses = 4 trimestres de resultado em caixa menos venda de imóveis (KNRI11 real)', () => {
+  // valores do informe trimestral (CVM), 3º tri/2025 a 2º tri/2026; o 1º tri/2025 fica de fora (só os 4 últimos)
+  const tri = [
+    ['2025-03-31', '84544645.6', '1169690.99'], ['2025-09-30', '85516834.89', '1169690.99'], ['2025-12-31', '99968690.5', '18828956.14'],
+    ['2026-03-31', '122984050.41', '48316842.64'], ['2026-06-30', '73978320.6', '1169691.01'],
+  ].map(([d, r, v]) => ({ Data_Referencia: d, Resultado_Trimestral_Liquido_Financeiro: r, Receita_Venda_Investimento_Financeiro: v }));
+  const r = resumoResultado([...tri.slice(1), tri[0]], 28204047); // ordem não importa
+  const soma = 85516834.89 + 99968690.5 + 122984050.41 + 73978320.6, venda = 1169690.99 + 18828956.14 + 48316842.64 + 1169691.01;
+  assert.equal(r.dataBaseTri, '2026-06-30');
+  assert.ok(Math.abs(r.ffo - (soma - venda) / 28204047) < 1e-4); // ≈ R$ 11,10 por cota
+  assert.ok(Math.abs(r.pctVendaImoveis - venda / soma) < 1e-6); // ≈ 18%
+});
+
+test('resumoResultado: menos de 4 trimestres seguidos, sem cotas ou resultado <= 0 -> nulls', () => {
+  const l = (d, r, v = '') => ({ Data_Referencia: d, Resultado_Trimestral_Liquido_Financeiro: r, Receita_Venda_Investimento_Financeiro: v });
+  const nada = { dataBaseTri: null, ffo: null, pctVendaImoveis: null };
+  assert.deepEqual(resumoResultado([l('2026-03-31', '10'), l('2026-06-30', '10')], 100), nada);
+  assert.deepEqual(resumoResultado([l('2025-06-30', '10'), l('2025-12-31', '10'), l('2026-03-31', '10'), l('2026-06-30', '10')], 100), nada); // falta set/2025
+  assert.deepEqual(resumoResultado([l('2025-09-30', '10'), l('2025-12-31', '10'), l('2026-03-31', '10'), l('2026-06-30', '10')], null), nada);
+  const neg = resumoResultado([l('2025-09-30', '-10'), l('2025-12-31', '5'), l('2026-03-31', '1'), l('2026-06-30', '1', '3')], 1);
+  assert.equal(neg.ffo, -6); // FFO negativo é informação, fica
+  assert.equal(neg.pctVendaImoveis, null); // sem resultado positivo não há parcela
+});

@@ -1,6 +1,6 @@
 name: Sondagem de fontes (temporário)
 
-# Só lê e imprime no log. Será apagado depois.
+# Ensaio do pipeline de dados no branch: gera dados/ e imprime amostras. Não commita nada. Será apagado depois.
 on:
   push:
     branches: ['claude/**']
@@ -11,42 +11,47 @@ permissions:
   contents: read
 
 jobs:
-  sondar:
+  ensaio:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
-      - name: Resultado trimestral de KNRI11 e HGLG11, coluna a coluna
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Gerar dados
+        continue-on-error: true
+        run: node scripts/atualizar-dados.mjs
+      - name: Amostras
         run: |
-          curl -sSf -m 120 -o it.zip "https://dados.cvm.gov.br/dados/FII/DOC/INF_TRIMESTRAL/DADOS/inf_trimestral_fii_2026.zip"
-          curl -sSf -m 120 -o it25.zip "https://dados.cvm.gov.br/dados/FII/DOC/INF_TRIMESTRAL/DADOS/inf_trimestral_fii_2025.zip"
-          unzip -o -q it.zip; mkdir -p a25; unzip -o -q it25.zip -d a25
-          python3 - <<'PY'
-          import csv, io
-          def ler(p): return list(csv.DictReader(io.open(p, encoding='latin1'), delimiter=';'))
-          geral = ler('inf_trimestral_fii_geral_2026.csv')
-          alvo = {g['CNPJ_Fundo_Classe']: g['Codigo_ISIN'] for g in geral if g['Codigo_ISIN'] in ('BRKNRICTF007', 'BRHGLGCTF004')}
-          print('CNPJs:', alvo)
-          for ano, pasta in (('2025', 'a25/'), ('2026', '')):
-              res = ler(f'{pasta}inf_trimestral_fii_resultado_contabil_financeiro_{ano}.csv')
-              for cnpj in alvo:
-                  linhas = sorted((r for r in res if r['CNPJ_Fundo_Classe'] == cnpj), key=lambda r: (r['Data_Referencia'], r['Versao']))
-                  print(f'== {alvo[cnpj]} {ano}: trimestres', [r['Data_Referencia'] + ' v' + r['Versao'] for r in linhas])
-                  for col in linhas[0].keys() if linhas else []:
-                      vals = [r[col] for r in linhas]
-                      if any(v not in ('', '0') for v in vals) and col not in ('CNPJ_Fundo_Classe',):
-                          print(f'   {col}: {vals}')
-          imov = ler('inf_trimestral_fii_imovel_2026.csv')
-          for cnpj in alvo:
-              u = [r for r in imov if r['CNPJ_Fundo_Classe'] == cnpj]
-              dt = max(r['Data_Referencia'] for r in u) if u else None
-              print(f'== imóveis {alvo[cnpj]} {dt}:', len([r for r in u if r['Data_Referencia'] == dt]), 'classes', sorted({r['Classe'] for r in u}))
-              for r in [r for r in u if r['Data_Referencia'] == dt][:4]: print('   ', r['Nome_Imovel'][:40], r['Percentual_Vacancia'], r['Percentual_Inadimplencia'], r['Percentual_Receitas_FII'])
-          PY
-
-      - name: B3 rendimentos de KNRI e HGLG (para conferir com a CVM)
+          ls -la dados/ && du -sh dados/precos && git diff --stat dados/ | tail -5
+          cat dados/meta.json
+          node -e "
+          const fs=require('fs'), l=(n)=>{try{return JSON.parse(fs.readFileSync('dados/'+n))}catch(e){return null}};
+          const p=l('proventos.json'), f=l('fundamentos.json'), fi=l('fiis.json'), r=l('risco.json'), c=l('conferencia.json');
+          for (const t of ['PETR4','ITUB4','BBAS3','TAEE11','MGLU3','HGLG11','KNRI11','MXRF11']) console.log(t, 'prov:', JSON.stringify(p?.ativos?.[t])?.slice(0,300));
+          for (const t of ['PETR4','ITUB4','BBAS3','WEGE3','TAEE11']) { const x=f?.ativos?.[t]; console.log(t, 'fund:', x && JSON.stringify({acoes:x.acoes,lpa12m:x.lpa12m,prov12m:x.prov12m,payout:x.payout})); }
+          for (const t of ['HGLG11','KNRI11','MXRF11','XPML11','VISC11']) { const x=fi?.ativos?.[t]; console.log(t, 'fii:', x && JSON.stringify({ffo:x.ffo,rend12m:x.rend12m,vac:x.vacancia,inad:x.inadimplencia,n:x.nImoveis,venda:x.pctVendaImoveis,tri:x.dataBaseTri,seg:x.segmento})); }
+          for (const t of ['BBAS3','MGLU3','WEGE3','PETR4']) console.log(t, 'risco:', JSON.stringify(r?.ativos?.[t]));
+          const v=Object.values(r?.ativos??{}); console.log('saltos>0:', v.filter(x=>x.saltos>0).length, 'de', v.length);
+          console.log('conferencia resumo:', JSON.stringify(c?.resumo));
+          console.log('FIIs divergentes:', Object.entries(c?.fiis??{}).filter(([,x])=>!x.ok).slice(0,15).map(([t,x])=>t+':'+x.divergentes+'/'+x.comparados+' max '+x.maxDif).join(' '));
+          console.log('ações divergentes:', Object.entries(c?.acoes??{}).filter(([,x])=>!x.ok).slice(0,15).map(([t,x])=>t+':'+x.dif).join(' '));
+          const fv=Object.values(fi?.ativos??{}); console.log('FIIs com ffo', fv.filter(x=>x.ffo!=null).length, 'vacancia', fv.filter(x=>x.vacancia!=null).length, 'de', fv.length);
+          const av=Object.values(f?.ativos??{}); console.log('ações com payout', av.filter(x=>x.payout!=null).length, 'prov12m>0', av.filter(x=>x.prov12m>0).length, 'de', av.length);
+          "
+      - name: Testes com os dados gerados
+        run: npm test 2>&1 | grep -E "^not ok|^# (pass|fail)" || true
+      - name: Análise com os dados gerados (distribuição das indicações e faixas)
         run: |
-          for f in KNRI HGLG; do
-            q=$(printf '{"typeFund":7,"cnpj":"0","identifierFund":"%s"}' "$f" | base64 -w0)
-            curl -sS -m 60 -A "Mozilla/5.0" "https://sistemaswebb3-listados.b3.com.br/fundsProxy/fundsCall/GetListedSupplementFunds/$q" \
-              | python3 -c "import json,sys; d=json.load(sys.stdin); print('$f', [(x['relatedTo'], x['lastDatePrior'], x['rate'], x['isinCode']) for x in d['cashDividends'] if x['isinCode'].endswith(('CTF007','CTF004'))][:14])"
-          done
+          node --input-type=module -e "
+          import { analisar, montarCtx } from './js/analise/analisar.js';
+          import fs from 'node:fs';
+          const l=(n)=>JSON.parse(fs.readFileSync('dados/'+n));
+          const d={fundamentos:l('fundamentos.json'),fiis:l('fiis.json'),risco:l('risco.json')}; const ctx=montarCtx({...d,cdi:0.14}); const c={}, cob={acao:[],fii:[]};
+          for (const [ts,cl] of [[Object.keys(d.fundamentos.ativos),'acao'],[Object.keys(d.fiis.ativos),'fii']]) for (const t of ts) {
+            const f='dados/precos/'+t+'.json'; if(!fs.existsSync(f)) continue; const s=JSON.parse(fs.readFileSync(f));
+            const a=analisar({ticker:t,classe:cl,preco:s.p.at(-1)/100,dados:d,ctx,precos5a:s.p}); if(a.semDados) continue;
+            const k=cl+':'+a.indicacao.id; c[k]=(c[k]||0)+1; const k2=cl+':faixa:'+a.faixa.id; c[k2]=(c[k2]||0)+1; cob[cl].push(a.valor.cobertura);
+          }
+          const med=(v)=>{v.sort((a,b)=>a-b);return v[v.length>>1]}; console.log(c); console.log('cobertura mediana', med(cob.acao), med(cob.fii));"

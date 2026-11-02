@@ -1,11 +1,12 @@
 // Baixa o COTAHIST da B3 dos últimos 5 anos e gera dados/precos/{TICKER}.json e dados/risco.json.
 // Uso: node scripts/atualizar-precos.mjs [--ano-fim=2026] [--saida=dados] [--cache=/tmp/cotahist]
 // Node 22, sem dependências; o ZIP é lido com `unzip -p` do sistema.
-// PREÇO BRUTO: o COTAHIST não traz fator de ajuste por proventos nem desdobramento/grupamento (ver lib/cotahist.mjs).
+// PREÇO AJUSTADO por desdobramento, grupamento e bonificação com os eventos da B3 (dados/proventos.json); sem
+// ajuste por dividendos. Sem o arquivo de proventos, fica o preço bruto do COTAHIST (ver lib/cotahist.mjs).
 // Um desdobramento vira um salto falso na série e distorce volatilidade, queda máxima e beta; `saltos` (dias com
 // variação >= 30%) em risco.json marca os ativos suspeitos. Ajuste por eventos corporativos ficou fora desta etapa.
 import { spawn } from 'node:child_process';
-import { createWriteStream } from 'node:fs';
+import { createWriteStream, readFileSync } from 'node:fs';
 import { mkdir, mkdtemp, readdir, rm, stat, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -23,6 +24,22 @@ const PREGOES_ANO = 252;
 const TOLERANCIA = 5; // pregões: o papel pode estrear até 5 pregões depois do início da janela e ainda contar como "janela cheia"
 const arred = (x, c = 6) => (x == null ? null : Math.round(x * 10 ** c) / 10 ** c);
 const iso = (d) => `${String(d).slice(0, 4)}-${String(d).slice(4, 6)}-${String(d).slice(6)}`;
+
+/**
+ * Ajusta a série por eventos em ações (B3, dados/proventos.json): cada preço com data até a data com do evento é
+ * dividido pelo fator (desdobramento 1:2 -> 2; grupamento 10:1 -> 0,1; bonificação de 5% -> 1,05). Centavos inteiros.
+ * datas em AAAAMMDD; ev = [[AAAA-MM-DD, fator, rótulo]]. Eventos fora da série não mudam nada.
+ */
+export function ajustarEventos(datas, precos, ev = []) {
+  const validos = ev.map(([d, f]) => [Number(d.replaceAll('-', '')), f]).filter(([d, f]) => f > 0 && d >= datas[0] && d < datas[datas.length - 1]);
+  if (!validos.length) return { precos, aplicados: 0 };
+  const out = precos.map((p, i) => {
+    let fator = 1;
+    for (const [d, f] of validos) if (datas[i] <= d) fator *= f;
+    return fator === 1 ? p : Math.round(p / fator);
+  });
+  return { precos: out, aplicados: validos.length };
+}
 
 async function baixar(ano, cache) {
   const arq = join(cache, `COTAHIST_A${ano}.ZIP`);
@@ -89,7 +106,7 @@ function indicadores(P, V, ini, mercado, nPregoes) {
  * Gera dados/precos/*.json e dados/risco.json a partir do COTAHIST dos últimos 5 anos (mais o ano anterior, para fechar a janela de 5 anos).
  * @param {{ anoFim?:number, saida?:string, cache?:string }} opcoes
  */
-export async function atualizarPrecos({ anoFim = new Date().getFullYear(), saida = 'dados', cache } = {}) {
+export async function atualizarPrecos({ anoFim = new Date().getFullYear(), saida = 'dados', cache, eventos = {} } = {}) {
   const proprio = !cache;
   cache ??= await mkdtemp(join(tmpdir(), 'cotahist-'));
   await mkdir(cache, { recursive: true });
@@ -108,11 +125,15 @@ export async function atualizarPrecos({ anoFim = new Date().getFullYear(), saida
 
     await mkdir(join(saida, 'precos'), { recursive: true });
     const ativos = {}, gerados = new Set();
+    let ajustados = 0;
     for (const [ticker, { dias }] of [...acervo].sort(([a], [b]) => a.localeCompare(b))) {
       const datas = [...dias.keys()].filter((d) => d > corte).sort((a, b) => a - b);
       // Descarta papel sem negócio recente (fora de linha) ou com menos de 20 pregões na janela.
       if (datas.length < 20 || datas[datas.length - 1] < calendario[N - 10]) continue;
-      const centavos = datas.map((d) => dias.get(d)[0]);
+      // preço ajustado por desdobramento/grupamento/bonificação (B3); sem o arquivo de proventos, fica o bruto
+      const aj = ajustarEventos(datas, datas.map((d) => dias.get(d)[0]), eventos[ticker]);
+      const centavos = aj.precos;
+      if (aj.aplicados) ajustados++;
       await writeFile(join(saida, 'precos', `${ticker}.json`), JSON.stringify({ t: ticker, d: datas, p: centavos }));
       gerados.add(`${ticker}.json`);
 
@@ -120,7 +141,7 @@ export async function atualizarPrecos({ anoFim = new Date().getFullYear(), saida
       const P = new Array(N).fill(null), V = new Array(N).fill(0);
       let k = 0, ultimo = null, ini = N;
       for (let i = 0; i < N; i++) {
-        while (k < datas.length && datas[k] <= calendario[i]) { ultimo = dias.get(datas[k])[0] / 100; k++; }
+        while (k < datas.length && datas[k] <= calendario[i]) { ultimo = centavos[k] / 100; k++; }
         if (datas[k - 1] === calendario[i]) V[i] = dias.get(calendario[i])[1];
         P[i] = ultimo;
         if (ultimo != null && ini === N) ini = i;
@@ -135,7 +156,7 @@ export async function atualizarPrecos({ anoFim = new Date().getFullYear(), saida
     // dataBase não está no contrato original; acrescentada para o app avisar se o dado ficou velho.
     const risco = { versao: 1, geradoEm: new Date().toISOString(), dataBase: iso(ultima), ibov: 'BOVA11', ativos };
     await writeFile(join(saida, 'risco.json'), JSON.stringify(risco));
-    return { ativos: gerados.size, ultima, pregoes: N };
+    return { ativos: gerados.size, ultima, pregoes: N, ajustados };
   } finally {
     if (proprio) await rm(cache, { recursive: true, force: true });
   }
@@ -144,6 +165,10 @@ export async function atualizarPrecos({ anoFim = new Date().getFullYear(), saida
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const arg = (nome) => process.argv.find((a) => a.startsWith(`--${nome}=`))?.split('=')[1];
   const t0 = Date.now();
-  const r = await atualizarPrecos({ anoFim: arg('ano-fim') ? Number(arg('ano-fim')) : undefined, saida: arg('saida'), cache: arg('cache') });
-  console.log(`${r.ativos} ativos, ${r.pregoes} pregões até ${r.ultima}, ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+  const saida = arg('saida') ?? 'dados';
+  // eventos em ações de dados/proventos.json (gerado antes, pelo orquestrador); sem ele, preços brutos
+  let eventos = {};
+  try { eventos = Object.fromEntries(Object.entries(JSON.parse(readFileSync(join(saida, 'proventos.json'), 'utf8')).ativos).map(([t, v]) => [t, v.ev])); } catch { console.warn('aviso: sem dados/proventos.json, preços sem ajuste por eventos'); }
+  const r = await atualizarPrecos({ anoFim: arg('ano-fim') ? Number(arg('ano-fim')) : undefined, saida, cache: arg('cache'), eventos });
+  console.log(`${r.ativos} ativos (${r.ajustados} ajustados por eventos), ${r.pregoes} pregões até ${r.ultima}, ${((Date.now() - t0) / 1000).toFixed(1)} s`);
 }
