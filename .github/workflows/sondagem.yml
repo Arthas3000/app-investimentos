@@ -1,6 +1,6 @@
 name: Sondagem de fontes (temporário)
 
-# Leitura passiva do que app.monexahub.com serve publicamente (sem login). Só imprime no log. Será apagado depois.
+# Só o robots.txt (feito para robôs) e seus cabeçalhos completos. Não acessa páginas protegidas. Será apagado depois.
 on:
   push:
     branches: ['claude/**']
@@ -13,62 +13,11 @@ permissions:
 jobs:
   sondar:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
-      - name: Página, cabeçalhos e arquivos públicos
+      - name: robots.txt e cabeçalhos completos
         run: |
-          UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36"
-          for u in https://app.monexahub.com/en https://monexahub.com/ https://app.monexahub.com/robots.txt https://app.monexahub.com/sitemap.xml https://app.monexahub.com/manifest.json https://app.monexahub.com/site.webmanifest https://app.monexahub.com/manifest.webmanifest; do
-            echo "=================== $u"
-            curl -sSL -m 30 -A "$UA" -D h.txt -o b.txt "$u" -w "HTTP %{http_code} %{size_download} bytes final=%{url_effective}\n" || true
-            grep -i -E "^(server|x-powered-by|x-vercel|x-nextjs|via|cf-|content-security|set-cookie|x-frame|strict-transport|content-type|x-amz|x-render|x-netlify|age|cache-control)" h.txt | cut -c1-200
-            case "$u" in *en|*monexahub.com/) cp b.txt "$(echo $u | tr -dc 'a-z').html";; *) head -c 1500 b.txt; echo;; esac
-          done
-      - name: Estrutura do HTML (title, meta, scripts, links)
-        run: |
-          for f in *.html; do
-            echo "=================== $f"
-            python3 - "$f" <<'PY'
-          import re, sys, html
-          s = open(sys.argv[1], encoding='utf-8', errors='replace').read()
-          print('tamanho', len(s))
-          for pat in [r'<title>(.*?)</title>', r'<meta[^>]+(?:name|property)="([^"]+)"[^>]+content="([^"]*)"', r'<script[^>]+src="([^"]+)"', r'<link[^>]+rel="([^"]+)"[^>]+href="([^"]+)"']:
-              for m in re.findall(pat, s, re.S)[:40]: print(' ', m if isinstance(m, str) else ' | '.join(m)[:200])
-          for k in ['__NEXT_DATA__', '_next/', '__nuxt', 'vite', 'webpack', 'react', 'vue', 'svelte', 'angular', 'tailwind', 'gtag', 'googletagmanager', 'posthog', 'mixpanel', 'segment', 'sentry', 'hotjar', 'clarity', 'supabase', 'firebase', 'stripe', 'clerk', 'auth0', 'tradingview', 'highcharts', 'chart.js', 'recharts', 'apexcharts', 'echarts', 'plausible', 'intercom', 'crisp']:
-              n = s.lower().count(k.lower())
-              if n: print(f'  sinal {k}: {n}')
-          txt = re.sub(r'<script.*?</script>|<style.*?</style>', ' ', s, flags=re.S)
-          txt = html.unescape(re.sub(r'<[^>]+>', ' ', txt)); txt = re.sub(r'\s+', ' ', txt)
-          print('  TEXTO VISÍVEL:', txt[:3000])
-          PY
-          done
-      - name: Scripts públicos (nomes, bibliotecas, endpoints e termos financeiros)
-        run: |
-          UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36"
-          python3 - <<'PY'
-          import re, glob, urllib.parse
-          srcs = set()
-          for f in glob.glob('*.html'):
-              s = open(f, encoding='utf-8', errors='replace').read()
-              base = 'https://app.monexahub.com/' if f.startswith('httpsappmonexahub') else 'https://monexahub.com/'
-              for m in re.findall(r'(?:src|href)="([^"]+\.(?:js|mjs)(?:\?[^"]*)?)"', s): srcs.add(urllib.parse.urljoin(base, m))
-          open('srcs.txt', 'w').write('\n'.join(sorted(srcs)))
-          print(len(srcs), 'scripts')
-          PY
-          head -40 srcs.txt
-          i=0; : > todos.js
-          while read -r u && [ $i -lt 40 ]; do i=$((i+1)); curl -sSL -m 30 -A "$UA" "$u" >> todos.js; echo >> todos.js; done < srcs.txt
-          echo "bytes de JS: $(wc -c < todos.js)"
-          echo "== bibliotecas (assinaturas)"
-          for k in react-dom next/router __NEXT_ nuxt vue @vue svelte angular zustand redux @tanstack react-query swr axios graphql apollo supabase firebase stripe clerk auth0 next-auth lightweight-charts tradingview highcharts chart.js recharts apexcharts echarts d3 plotly framer-motion radix shadcn lucide i18next next-intl posthog mixpanel sentry gtag amplitude intercom crisp workbox serviceWorker websocket socket.io pusher; do
-            n=$(grep -o -i -F "$k" todos.js | wc -l); [ "$n" -gt 0 ] && echo "  $k: $n"
-          done
-          echo "== hosts e endpoints citados"
-          grep -o -E 'https?://[a-zA-Z0-9.-]+\.[a-z]{2,}(/[a-zA-Z0-9_./-]*)?' todos.js | sort | uniq -c | sort -rn | head -60
-          grep -o -E '"/api/[a-zA-Z0-9_/.-]+' todos.js | sort | uniq -c | sort -rn | head -40
-          echo "== termos financeiros e de produto (contagem)"
-          for k in portfolio watchlist dividend yield "dividend yield" "fair value" dcf graham "intrinsic" "p/e" "pe ratio" "price target" "analyst" "earnings" "screener" "backtest" "rebalanc" "allocation" "sharpe" "sortino" "volatility" "drawdown" "beta" "correlation" "monte carlo" "efficient frontier" "markowitz" "cagr" "irr" "xirr" "twr" "benchmark" "alert" "news" "sentiment" "ai " "openai" "gpt" "claude" "gemini" "insider" "13f" "etf" "crypto" "forex" "options" "tax" "currency" "fx " "goal" "budget" "net worth" "score" "rating" "moat" "roic" "roe" "free cash flow" "fcf" "ev/ebitda" "peg" "piotroski" "altman" "magic formula"; do
-            n=$(grep -o -i -F "$k" todos.js | wc -l); [ "$n" -gt 0 ] && echo "  $k: $n"
-          done
-          echo "== strings de interface (amostra de textos em inglês)"
-          grep -o -E '"[A-Z][a-z]+( [A-Za-z/&%-]+){1,6}"' todos.js | sort | uniq -c | sort -rn | head -150
+          curl -sS -m 30 -D h.txt -o r.txt https://app.monexahub.com/robots.txt -w "HTTP %{http_code}\n"
+          echo "== cabeçalhos"; cat h.txt
+          echo "== CSP, uma diretiva por linha"; grep -i '^content-security-policy' h.txt | cut -d: -f2- | tr ';' '\n' | sed 's/^ //'
+          echo "== robots.txt (sem o texto jurídico)"; grep -v '^#' r.txt | sed '/^\s*$/d'
