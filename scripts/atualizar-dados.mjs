@@ -5,13 +5,14 @@
 // ponytail: filhos em processo separado (CLI existente); só precos e fundamentos usam o cache compartilhado,
 //   o de FIIs baixa os próprios ZIPs (CVM FII + COTAHIST mensal), que não se repetem nas outras fontes.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const raiz = fileURLToPath(new URL('..', import.meta.url));
 const cache = mkdtempSync(join(tmpdir(), 'dados-'));
+mkdirSync(join(raiz, 'dados'), { recursive: true }); // primeira execução: a pasta ainda não existe
 const lerOuNull = (f) => (existsSync(f) ? readFileSync(f, 'utf8') : null);
 const semGerado = (t) => t?.replace(/"geradoEm":\s*"[^"]*"/, '"geradoEm":""');
 
