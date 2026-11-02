@@ -133,3 +133,13 @@ test('derivar: tudo ausente não quebra', () => {
   for (const k of ['roe12m', 'roeTri', 'dlEbitda', 'dlPl', 'liqCorrente', 'roic', 'crescReceita12m', 'vpa', 'lpa12m']) assert.equal(d[k], null, k);
   assert.deepEqual(d.aproximacoes, []);
 });
+
+import { proventosDoAtivo } from '../scripts/atualizar-fundamentos.mjs';
+
+test('proventosDoAtivo: proventos de 12 meses da B3 e payout = proventos ÷ LPA de 12 meses', () => {
+  assert.deepEqual(proventosDoAtivo({ soma12m: 3.2 }, 8), { prov12m: 3.2, payout: 0.4 });
+  assert.deepEqual(proventosDoAtivo({ soma12m: 0 }, 8), { prov12m: 0, payout: 0 }); // não pagou: 0, não "sem dado"
+  assert.deepEqual(proventosDoAtivo({ soma12m: 1 }, -2), { prov12m: 1, payout: null }); // prejuízo: payout sem sentido
+  assert.deepEqual(proventosDoAtivo(undefined, 8), { prov12m: null, payout: null }); // sem dado da B3
+  assert.deepEqual(proventosDoAtivo({ soma12m: 2 }, null), { prov12m: 2, payout: null });
+});

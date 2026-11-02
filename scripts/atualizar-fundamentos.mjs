@@ -32,7 +32,9 @@
 //   DT_REFER, ON + PN somadas). Não separa por classe. Units (ex. TAEE11): vpa x ações por unit, lida da
 //   composição do FCA ("1 ON / 2 PN" = 3). Se não der para ler, vpa e lpa12m ficam null para a unit.
 // lpa12m (APROXIMAÇÃO) = lucro LTM / as mesmas ações (usa a quantidade atual, não a média ponderada).
-// payout, dy, cet1, inadimplencia: sem fonte na CVM (ITR/DFP) => sempre null.
+// prov12m (R$/ação, data com nos últimos 12 meses) vem da B3 (dados/proventos.json, gerado antes); payout = prov12m ÷
+// lpa12m da mesma classe. dy fica null aqui: o app calcula com o preço ao vivo (prov12m ÷ preço).
+// cet1, inadimplencia: sem fonte na CVM (ITR/DFP) => sempre null.
 //
 // Bancos/financeiras (plano de contas próprio; detectado porque a conta 1.01 do ativo não é "Ativo Circulante",
 //   o que também pega seguradoras): só roe, lucros, crescReceita12m, vpa e lpa12m; EBIT, dívida, liquidez e ROIC = null.
@@ -50,7 +52,7 @@
 // =============================================================================================
 
 import { execFileSync } from 'node:child_process';
-import { createWriteStream, existsSync, mkdtempSync, rmSync, statSync, mkdirSync, writeFileSync } from 'node:fs';
+import { createWriteStream, existsSync, mkdtempSync, readFileSync, rmSync, statSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
@@ -130,6 +132,12 @@ export function escalaAcoes(acoes, lucro, eps) {
 // Entrada (R$, null = ausente):
 //  tipo, lucro[8] e receita[8] (tri, mais recente primeiro), ebit[4], da[4], pl[3] (controladora em E, E-3m, E-12m),
 //  plTotal, caixa, dividaBruta, ativoCirc, passivoCirc, acoes (em circulação), acoesUnit (multiplicador, padrão 1).
+/** Proventos de 12 meses (B3) do ticker e payout sobre o LPA de 12 meses; sem dado da B3 -> nulls. */
+export function proventosDoAtivo(prov, lpa12m) {
+  if (!prov || typeof prov.soma12m !== 'number') return { prov12m: null, payout: null };
+  return { prov12m: prov.soma12m, payout: lpa12m > 0 ? Math.round((prov.soma12m / lpa12m) * 1e4) / 1e4 : null };
+}
+
 export function derivar(e) {
   const banco = e.tipo === 'banco';
   const lucroLtm = soma(e.lucro.slice(0, 4));
@@ -323,7 +331,7 @@ function entradaEmpresa(e, fim, tipo, acoesBrutas, acoesUnit) {
   };
 }
 
-export async function gerar({ hoje = new Date(), cache, reusar = false } = {}) {
+export async function gerar({ hoje = new Date(), cache, reusar = false, proventos = null } = {}) {
   const dir = cache ?? mkdtempSync(join(tmpdir(), 'cvm-fund-'));
   mkdirSync(dir, { recursive: true });
   const ano = hoje.getUTCFullYear(), anos = [ano - 2, ano - 1, ano];
@@ -371,12 +379,12 @@ export async function gerar({ hoje = new Date(), cache, reusar = false } = {}) {
     const acoes = comp.get(`${cnpj}|${fim}`)?.acoes ?? null;
     const estatal = c.controle === 'Estatal' || ESTATAIS_EXTRA.includes(cnpj);
     for (const { ticker, un } of c.tickers) {
-      const d = derivar(entradaEmpresa(e, fim, tipo, acoes, un));
+      const ent = entradaEmpresa(e, fim, tipo, acoes, un), d = derivar(ent);
       ativos[ticker] = {
-        cnpj, nome: c.nome, tipo, estatal, dataBase: fim,
+        cnpj, nome: c.nome, tipo, estatal, dataBase: fim, acoes: ent.acoes, // em circulação, na escala corrigida (conferida com a B3)
         roe12m: d.roe12m, roeTri: d.roeTri, lucrosTri: d.lucrosTri, dlEbitda: d.dlEbitda, dlPl: d.dlPl,
         liqCorrente: d.liqCorrente, roic: d.roic, crescReceita12m: d.crescReceita12m, vpa: d.vpa, lpa12m: d.lpa12m,
-        payout: null, dy: null, cet1: null, inadimplencia: null,
+        ...proventosDoAtivo(proventos?.[ticker], d.lpa12m), dy: null, cet1: null, inadimplencia: null,
         aproximacoes: individual.has(cnpj) ? [...d.aproximacoes, 'demonstracaoIndividual'] : d.aproximacoes,
       };
     }
@@ -394,7 +402,10 @@ function serializar(obj) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const arg = (n) => { const i = process.argv.indexOf(n); return i < 0 ? undefined : process.argv[i + 1]; };
   const saida = fileURLToPath(new URL('../dados/fundamentos.json', import.meta.url));
-  const res = await gerar({ cache: arg('--cache'), reusar: process.argv.includes('--reusar') });
+  // proventos da B3 (dados/proventos.json, gerado antes pelo orquestrador); sem ele, prov12m e payout ficam null
+  let proventos = null;
+  try { proventos = JSON.parse(readFileSync(fileURLToPath(new URL('../dados/proventos.json', import.meta.url)), 'utf8')).ativos; } catch { console.warn('aviso: sem dados/proventos.json, payout fica null'); }
+  const res = await gerar({ cache: arg('--cache'), reusar: process.argv.includes('--reusar'), proventos });
   mkdirSync(fileURLToPath(new URL('../dados/', import.meta.url)), { recursive: true });
   const texto = serializar(res);
   writeFileSync(saida, texto);

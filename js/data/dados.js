@@ -1,4 +1,4 @@
-// Dados da análise gerados pelo workflow: dados/{fundamentos,fiis,risco,meta}.json e dados/precos/{T}.json.
+// Dados da análise gerados pelo workflow: dados/{fundamentos,fiis,risco,meta,proventos,conferencia}.json e dados/precos/{T}.json.
 // Mesma origem do index.html (URL relativa). Cache de 6 h. O app abre normalmente sem esses arquivos.
 import { comCache } from './cache.js';
 
@@ -35,6 +35,10 @@ export async function carregarDados() {
   const [fundamentos, fiis, risco, meta] = await Promise.all(['fundamentos', 'fiis', 'risco', 'meta'].map((n) => unico(`${n}.json`)));
   return { fundamentos, fiis, risco, meta };
 }
+
+/** Proventos (B3) e conferência entre fontes: só o modal do ativo usa, então carregam sob demanda. */
+export const carregarProventos = () => unico('proventos.json');
+export const carregarConferencia = () => unico('conferencia.json');
 
 /** Série de preços de 5 anos de um ticker: data = { t, d:[AAAAMMDD], p:[centavos] }. */
 export const carregarPrecos = (ticker) => unico(`precos/${encodeURIComponent(ticker)}.json`);

@@ -5,7 +5,7 @@ import { botaoAjuda, ligarAjuda } from '../ui/ajuda.js';
 import { listarAtivos, cotacao, historico } from '../data/brapi.js';
 import { prefs, token } from '../data/store.js';
 import { fmtQuando } from '../data/pregao.js';
-import { carregarDados, carregarPrecos } from '../data/dados.js';
+import { carregarDados, carregarPrecos, carregarProventos, carregarConferencia } from '../data/dados.js';
 import { ultimos, SERIES } from '../data/bcb.js';
 import { analisar, montarCtx } from '../analise/analisar.js';
 import { KE, G, COBERTURA } from '../analise/constantes.js';
@@ -245,10 +245,11 @@ async function abrirAtivo(codigo, dlg) {
   dlg._ajuda ??= ligarAjuda(dlg, appCtx); // uma vez por dialog; os "?" do modal abrem o painel dentro dele
 
   // 1 ticker por chamada no plano grátis: cotação e histórico em sequência (a fila da brapi cuida da ordem)
-  const [q, h, d, pr, cdi, lista] = await Promise.all([
+  const [q, h, d, pr, cdi, lista, provs, conf] = await Promise.all([
     cotacao(codigo), historico(codigo, '3mo'), carregarDados(), carregarPrecos(codigo), cdiAnual(),
     // direto pelo endereço a lista ainda não foi carregada pela tela: lê do cache de 12 h
     dados.length ? dados : listarAtivos({ ttlMs: 12 * 3600_000 }).then((r) => r.data ?? []),
+    carregarProventos(), carregarConferencia(),
   ]);
   if (!dlg.open || dlg.querySelector('#sheetTitulo').textContent !== codigo) return;
   body.removeAttribute('aria-busy');
@@ -305,7 +306,7 @@ async function abrirAtivo(codigo, dlg) {
       <div><dt>${classe === 'fii' ? 'Tipo' : 'Setor'}</dt><dd>${esc(classe === 'fii' ? (SEGMENTO_FII[fund?.segmento] ?? 'FII') : (setorTxt ?? '—'))}</dd></div>
     </dl>
     ${q.error?.code === 'MISSING_TOKEN' ? blocoToken() : ''}
-    ${analiseHtml({ a, d, arquivo, classe, codigo, fund, base, preco, pr })}
+    ${analiseHtml({ a, d, arquivo, classe, codigo, fund, base, preco, pr, prov: provs.data?.ativos?.[codigo] ?? null, provOk: !!provs.data, conf: conf.data })}
     <p class="src">Fonte da cotação: ${c ? 'brapi' : 'lista da brapi'} · dados de ${fmtQuando(new Date(quando))}${q.stale || h.stale ? ' (últimos disponíveis, sem conexão)' : ''}.</p>`;
 
   body.querySelector('#mComprar').addEventListener('click', () => abrirRegistro(appCtx, { tipo: 'compra', ativo: codigo }));
@@ -340,7 +341,40 @@ function blocoToken() {
 const AVISO = `<aside class="an an--aviso card"><strong>Material educacional, não é recomendação</strong>
   <p>Nada aqui é recomendação de compra, venda ou manutenção. O app lê só números (balanços, preços e risco): notícias e fatos relevantes não entram. Resultado passado não garante resultado futuro.</p></aside>`;
 
-function analiseHtml({ a, d, arquivo, classe, codigo, fund, base, preco, pr }) {
+const TIPO_PROV = { DIV: 'Dividendo', JCP: 'JCP', REND: 'Rendimento' };
+
+// Proventos dos últimos 12 meses (B3), mais recente primeiro. Sem o arquivo, o bloco não aparece.
+function proventosHtml(prov, provOk, codigo, classe) {
+  const un = classe === 'fii' ? 'cota' : 'ação';
+  if (!provOk) return '';
+  const hoje = new Date(), ini = new Date(hoje); ini.setDate(ini.getDate() - 365);
+  const de = ini.toISOString().slice(0, 10);
+  const p = (prov?.p ?? []).filter(([dc]) => dc > de);
+  const corpo = p.length
+    ? `<ul class="prov-lista" aria-label="Proventos de ${esc(codigo)}">${p.map(([dc, pg, v, t]) => `<li>
+        <span><strong>${TIPO_PROV[t] ?? t}</strong><span class="muted">Data com ${dataIso(dc)}${pg ? ` · pagamento ${dataIso(pg)}` : ''}</span></span>
+        <span class="num">R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}<span class="muted"> por ${un}</span></span></li>`).join('')}</ul>
+      <p class="muted">Soma de 12 meses: <strong class="num">${reais(prov.soma12m)}</strong> por ${un}. Valores brutos, antes de imposto (o JCP tem 15% retido na fonte).</p>`
+    : '<p class="muted">A B3 não informa proventos com data com nos últimos 12 meses para este ativo.</p>';
+  return `<section class="card an" aria-labelledby="h-pv"><h3 id="h-pv">Proventos nos últimos 12 meses ${botaoAjuda('dy')}</h3>${corpo}<p class="src">Fonte: B3, empresas listadas.</p></section>`;
+}
+
+// Conferência entre fontes oficiais (dados/conferencia.json): uma frase, ou um aviso quando divergem.
+function conferenciaHtml(conf, classe, codigo) {
+  const pc = (x) => `${(x * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
+  if (classe === 'fii') {
+    const c = conf?.fiis?.[codigo];
+    if (!c) return '';
+    return c.ok && !c.divergentes
+      ? `<p class="conf conf--ok">${icon('check', 16)}<span>Rendimentos conferidos: o anunciado à B3 e o informe mensal da CVM batem nos ${c.comparados} meses comparados.</span></p>`
+      : `<p class="conf ${c.ok ? 'conf--ok' : 'conf--div'}">${icon(c.ok ? 'check' : 'alert', 16)}<span>${c.ok ? 'Rendimentos conferidos com ressalva' : 'Atenção: fontes divergem'}: o rendimento calculado pelo informe mensal da CVM difere do anunciado à B3 em ${c.divergentes} de ${c.comparados} meses (até ${pc(c.maxDif)}). O app usa o valor anunciado à B3.</span></p>`;
+  }
+  const c = conf?.acoes?.[codigo];
+  if (!c) return '';
+  return `<p class="conf ${c.ok ? 'conf--ok' : 'conf--div'}">${icon(c.ok ? 'check' : 'alert', 16)}<span>${c.ok ? `Número de ações conferido com a B3 (diferença de ${pc(c.dif)}, ações em tesouraria incluídas)` : `Atenção: número de ações da CVM e da B3 difere em ${pc(c.dif)}; valor patrimonial e lucro por ação podem estar distorcidos`}.</span></p>`;
+}
+
+function analiseHtml({ a, d, arquivo, classe, codigo, fund, base, preco, pr, prov = null, provOk = false, conf = null }) {
   const cartao = (titulo, ic, texto, extra = '') => `<section class="card an an--vazio" aria-labelledby="h-an"><h3 id="h-an">${titulo}</h3><div class="an__msg">${icon(ic, 28)}<p>${texto}</p></div>${extra}</section>${AVISO}`;
   const nenhum = [d.fundamentos, d.fiis, d.risco].every((x) => x.ausente);
   if (nenhum) return cartao('Análise ainda não disponível', 'clock', 'Os arquivos de dados da análise (pasta dados/) ainda não foram gerados neste endereço. Preço e gráfico continuam funcionando.');
@@ -381,16 +415,18 @@ function analiseHtml({ a, d, arquivo, classe, codigo, fund, base, preco, pr }) {
     <p class="muted">Preço justo = preço × (P/VP justo ÷ P/VP). P/VP justo = (ROE normalizado − ${perc(G, 0)}) ÷ (${perc(KE, 0)} − ${perc(G, 0)}); ${perc(KE, 0)} é o custo do capital próprio e ${perc(G, 0)} o crescimento de longo prazo, premissas de estudo e não previsão.</p>`
     : `<p>${preco == null ? 'Sem preço atual agora: o preço justo e a margem de segurança ficam de fora até a cotação voltar.' : 'Sem dados suficientes de lucro e patrimônio para estimar o preço justo.'}</p>`}</section>`;
 
-  const AJUDA_TERMO = { 'P/VP': 'pvp', 'Rendimento 12 meses': 'dy', FFO: 'ffo', 'ROE 12 meses': 'roe', 'Dív. líquida/EBITDA': 'dlEbitda', 'Liquidez corrente': 'liquidezCorrente', ROIC: 'roic', 'Dividend yield': 'dy', Payout: 'payout' };
+  const dyAcao = fund.dy ?? (typeof fund.prov12m === 'number' && preco > 0 ? fund.prov12m / preco : null);
+  const AJUDA_TERMO = { 'P/VP': 'pvp', 'Rendimento 12 meses': 'dy', FFO: 'ffo', 'FFO 12m por cota': 'ffo', 'Cobertura pelo FFO': 'ffo', 'ROE 12 meses': 'roe', 'Dív. líquida/EBITDA': 'dlEbitda', 'Liquidez corrente': 'liquidezCorrente', ROIC: 'roic', 'Dividend yield': 'dy', Payout: 'payout' };
   const fmtN = (x, f) => (typeof x === 'number' ? f(x) : null);
   const principais = classe === 'fii'
     ? [['P/VP', fmtN(valor.pvp, num2)], ['Rendimento 12 meses', fmtN(valor.dy, (x) => perc(x))], ['Alavancagem', fmtN(fund.alavancagem, (x) => perc(x, 0))],
       ['Liquidez diária', fmtN(d.risco.data?.ativos?.[codigo]?.liquidezDiaria, (x) => `R$ ${compacto(x)}`)], ['Valor patrimonial/cota', fmtN(fund.vpa, reais)], ['Rendimento/cota 12m', fmtN(fund.rend12m, reais)],
-      ['FFO', fmtN(fund.ffo, reais)], ['Vacância', fmtN(fund.vacancia, (x) => perc(x, 0))], ['Nº de imóveis', fmtN(fund.nImoveis, String)]]
+      ['FFO 12m por cota', fmtN(fund.ffo, reais)], ['Cobertura pelo FFO', fmtN(valor.coberturaFfo, (x) => perc(x, 0))], ['Vacância', fmtN(fund.vacancia, (x) => perc(x, 1))],
+      ['Inadimplência', fmtN(fund.inadimplencia, (x) => perc(x, 1))], ['Nº de imóveis de renda', fmtN(fund.nImoveis, String)], ['Resultado vindo de venda de imóveis', fmtN(fund.pctVendaImoveis, (x) => perc(x, 0))]]
     : [['P/VP', fmtN(valor.pvp, num2)], ['ROE 12 meses', fmtN(fund.roe12m, perc)], ['ROE último trimestre', fmtN(fund.roeTri, perc)],
       [fund.tipo === 'incorporadora' ? 'Dív. líquida/PL' : 'Dív. líquida/EBITDA', fmtN(fund.tipo === 'incorporadora' ? fund.dlPl : fund.dlEbitda, num2)], ['Liquidez corrente', fmtN(fund.liqCorrente, num2)],
       ['ROIC', fmtN(fund.roic, perc)], ['Crescimento da receita', fmtN(fund.crescReceita12m, perc)], ['Valor patrimonial/ação', fmtN(fund.vpa, reais)],
-      ['Lucro/ação 12m', fmtN(fund.lpa12m, reais)], ['Dividend yield', fmtN(fund.dy, perc)], ['Payout', fmtN(fund.payout, (x) => perc(x, 0))]];
+      ['Lucro/ação 12m', fmtN(fund.lpa12m, reais)], ['Proventos/ação 12m', fmtN(fund.prov12m, reais)], ['Dividend yield', fmtN(dyAcao, perc)], ['Payout', fmtN(fund.payout, (x) => perc(x, 0))]];
   const aprox = fund.aproximacoes?.length ? ` Aproximados a partir das demonstrações: ${esc(fund.aproximacoes.join(', '))}.` : '';
   const risco = d.risco.data;
 
@@ -417,7 +453,9 @@ function analiseHtml({ a, d, arquivo, classe, codigo, fund, base, preco, pr }) {
       ${estab.motivos.length ? `<ul class="an__list">${estab.motivos.map((m) => `<li>${esc(m)}</li>`).join('')}</ul>` : ''}</section>
     <section class="card an" aria-labelledby="h-fu"><h3 id="h-fu">Principais fundamentos</h3>
       <dl class="kv">${principais.map(([n, v]) => `<div><dt>${n}${botaoAjuda(AJUDA_TERMO[n])}</dt><dd class="num">${dd(v)}</dd></div>`).join('')}</dl>
-      <p class="src">${classe === 'fii' ? 'Informe mensal do fundo' : 'Demonstrações da empresa'} de ${dataBase} (CVM). Risco calculado com preços até ${dataIso(risco?.dataBase)} (B3, COTAHIST). Arquivo gerado em ${fmtQuando(new Date(geradoEm))}. “—” é dado não disponível: o cálculo se adapta.${aprox}</p></section>
+      ${conferenciaHtml(conf, classe, codigo)}
+      <p class="src">${classe === 'fii' ? `Informe mensal do fundo de ${dataBase}${fund.dataBaseTri ? ` e trimestral de ${dataIso(fund.dataBaseTri)}` : ''}` : `Demonstrações da empresa de ${dataBase}`} (CVM)${classe === 'fii' ? (fund.fonteRend === 'B3' ? '; rendimentos: B3' : '') : '; proventos e payout: B3'}. Risco calculado com preços até ${dataIso(risco?.dataBase)} (B3, COTAHIST). Arquivo gerado em ${fmtQuando(new Date(geradoEm))}. “—” é dado não disponível: o cálculo se adapta.${aprox}</p></section>
+    ${proventosHtml(prov, provOk, codigo, classe)}
     ${AVISO}`;
 }
 

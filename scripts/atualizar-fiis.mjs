@@ -10,14 +10,17 @@
 //  complemento:  Valor_Ativo, Cotas_Emitidas, Valor_Patrimonial_Cotas, Percentual_Dividend_Yield_Mes,
 //                Percentual_Rentabilidade_Patrimonial_Mes
 //  ativo_passivo: Total_Passivo, Total_Investido e a composição dos ativos (imóveis, CRI, LCI, ...)
-// NÃO vêm no informe mensal: FFO, vacância, nº de imóveis, qualidade de crédito, venda de imóveis -> null.
+// Informe TRIMESTRAL (licença ODbL, CVM): imovel (vacância, inadimplência, parcela da receita por imóvel) e
+// resultado_contabil_financeiro (resultado em caixa do trimestre e receita de venda de imóveis). Qualidade de crédito
+// dos CRIs não existe em nenhum dos dois -> null.
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const CVM = (ano) => `https://dados.cvm.gov.br/dados/FII/DOC/INF_MENSAL/DADOS/inf_mensal_fii_${ano}.zip`;
+const CVM_TRI = (ano) => `https://dados.cvm.gov.br/dados/FII/DOC/INF_TRIMESTRAL/DADOS/inf_trimestral_fii_${ano}.zip`;
 const COTAHIST_M = (mm, ano) => `https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_M${mm}${ano}.ZIP`;
 const DY_MAX = 0.2; // ponytail: DY mensal > 20% é erro de preenchimento (ex.: informado em %); mês vira null
 
@@ -107,7 +110,7 @@ export function classificarSegmento(ap, corte = 0.6) {
 }
 
 /** Monta o registro de um fundo. comp = linhas de complemento do CNPJ; ap = linhas de ativo_passivo do CNPJ. */
-export function montarFii({ cnpj, nome, segmentoCvm, comp, ap }) {
+export function montarFii({ cnpj, nome, segmentoCvm, comp, ap, imoveis = [], resultado = [], rendB3 = null }) {
   const serie = comp
     .map((l) => ({
       data: l.Data_Referencia,
@@ -131,14 +134,81 @@ export function montarFii({ cnpj, nome, segmentoCvm, comp, ap }) {
     dataBase: u.data,
     vpa: arred(u.vpa, 4),
     cotas: u.cotas,
-    ...rendimentosMensais(serie),
+    ...rendimentos(rendimentosMensais(serie), rendB3),
     alavancagem: passivo != null && u.ativo > 0 ? arred(passivo / u.ativo, 6) : null,
-    ffo: null,
-    vacancia: null,
-    nImoveis: null,
-    pctVendaImoveis: null,
-    qualidadeCredito: null,
+    // do informe trimestral: FFO (aproximação), venda de imóveis, vacância, inadimplência e nº de imóveis de renda
+    ...resumoTrimestral(imoveis, resultado, u.cotas),
+    qualidadeCredito: null, // ponytail: o informe não traz rating dos CRIs
   };
+}
+
+// ---------- informe trimestral ----------
+
+/** Percentual do informe como fração: aceita 0,1039 ou 10,39 (alguns fundos informam em %); fora de [0, 100] é null. */
+export function fracao(s) {
+  const x = num(s);
+  if (x == null || x < 0 || x > 100) return null;
+  return x > 1 ? x / 100 : x;
+}
+
+/**
+ * Imóveis para renda acabados do trimestre mais recente de um fundo (linhas de inf_trimestral_fii_imovel).
+ * Vacância e inadimplência ponderadas pela parcela da receita do fundo (Percentual_Receitas_FII); sem ela, pela área.
+ */
+export function resumoImoveis(linhas) {
+  const vazio = { dataBase: null, nImoveis: null, vacancia: null, inadimplencia: null };
+  const renda = linhas.filter((l) => /renda acabado/i.test(l.Classe ?? ''));
+  if (!renda.length) return vazio;
+  const dataBase = renda.reduce((m, l) => (l.Data_Referencia > m ? l.Data_Referencia : m), '');
+  const u = renda.filter((l) => l.Data_Referencia === dataBase);
+  const usaReceita = u.some((l) => (fracao(l.Percentual_Receitas_FII) ?? 0) > 0);
+  const peso = (l) => (usaReceita ? fracao(l.Percentual_Receitas_FII) : num(l.Area)) ?? 0;
+  const media = (campo) => {
+    const v = u.map((l) => [fracao(l[campo]), peso(l)]).filter(([x, w]) => x != null && w > 0);
+    const tw = v.reduce((a, [, w]) => a + w, 0);
+    return tw > 0 ? arred(v.reduce((a, [x, w]) => a + x * w, 0) / tw, 6) : null;
+  };
+  return { dataBase, nImoveis: u.length, vacancia: media('Percentual_Vacancia'), inadimplencia: media('Percentual_Inadimplencia') };
+}
+
+const trimestreSeguinte = (d) => {
+  const [a, m] = [Number(d.slice(0, 4)), Number(d.slice(5, 7))];
+  return m === 12 ? `${a + 1}-03-31` : `${a}-${{ 3: '06-30', 6: '09-30', 9: '12-31' }[m]}`;
+};
+
+/**
+ * Resultado dos últimos 4 trimestres seguidos de um fundo (linhas de inf_trimestral_fii_resultado_contabil_financeiro,
+ * já na última versão). Colunas do trimestre (não acumuladas): Resultado_Trimestral_Liquido_Financeiro (caixa) e
+ * Receita_Venda_Investimento_Financeiro. Aproximação de FFO (R$/cota, 12 meses) = soma do resultado em caixa menos
+ * a receita de venda de imóveis, ÷ cotas. pctVendaImoveis = venda ÷ resultado (0 a 1).
+ */
+export function resumoResultado(linhas, cotas) {
+  const nada = { dataBaseTri: null, ffo: null, pctVendaImoveis: null };
+  const por = new Map(linhas.map((l) => [l.Data_Referencia, l]));
+  const datas = [...por.keys()].sort();
+  const u = datas.at(-1);
+  if (!u || !(cotas > 0)) return nada;
+  const q = [u]; // 4 trimestres seguidos terminando no mais recente
+  while (q.length < 4) { const ant = datas.filter((d) => trimestreSeguinte(d) === q[0]); if (!ant.length) return nada; q.unshift(ant[0]); }
+  const res = q.reduce((a, d) => a + (num(por.get(d).Resultado_Trimestral_Liquido_Financeiro) ?? 0), 0);
+  const venda = q.reduce((a, d) => a + Math.max(0, num(por.get(d).Receita_Venda_Investimento_Financeiro) ?? 0), 0);
+  return {
+    dataBaseTri: u,
+    ffo: arred((res - venda) / cotas, 4),
+    pctVendaImoveis: res > 0 ? arred(Math.min(1, venda / res), 6) : null,
+  };
+}
+
+// rend12m: soma dos rendimentos anunciados à B3 (por cota, data com nos últimos 12 meses) quando houver; o cálculo
+// pelo informe mensal (DY × VPA) erra em fundo que emitiu cotas no período e fica como reserva e conferência.
+function rendimentos(cvm, rendB3) {
+  const b3 = typeof rendB3 === 'number' && rendB3 > 0;
+  return { rendMensal: cvm.rendMensal, rend12m: b3 ? rendB3 : cvm.rend12m, rend12mCvm: cvm.rend12m, fonteRend: b3 ? 'B3' : 'CVM' };
+}
+
+function resumoTrimestral(imoveis, resultado, cotas) {
+  const im = resumoImoveis(imoveis), rs = resumoResultado(resultado, cotas);
+  return { ffo: rs.ffo, pctVendaImoveis: rs.pctVendaImoveis, vacancia: im.vacancia, inadimplencia: im.inadimplencia, nImoveis: im.nImoveis, dataBaseTri: rs.dataBaseTri ?? im.dataBase };
 }
 
 // ---------- E/S ----------
@@ -152,7 +222,7 @@ async function baixar(url, destino) {
   return true;
 }
 
-export async function gerar(hoje = new Date()) {
+export async function gerar(hoje = new Date(), proventos = null) {
   const tmp = mkdtempSync(join(tmpdir(), 'fiis-'));
   try {
     const ano = hoje.getUTCFullYear();
@@ -168,6 +238,17 @@ export async function gerar(hoje = new Date()) {
     }
     if (!anosOk) throw new Error('nenhum informe da CVM baixado');
 
+    // informe trimestral (imóveis e resultado): falha aqui não derruba o arquivo, os campos ficam null
+    const imovel = [], resultado = [];
+    for (const a of [ano, ano - 1]) {
+      const z = join(tmp, `t${a}.zip`);
+      if (!(await baixar(CVM_TRI(a), z))) { console.warn(`aviso: informe trimestral ${a} indisponível`); continue; }
+      try {
+        imovel.push(...lerCsv(lerZip(z, `inf_trimestral_fii_imovel_${a}.csv`)));
+        resultado.push(...lerCsv(lerZip(z, `inf_trimestral_fii_resultado_contabil_financeiro_${a}.csv`)));
+      } catch (e) { console.warn(`aviso: informe trimestral ${a} ilegível: ${e.message}`); }
+    }
+
     // tickers: COTAHIST do mês atual e dos 2 anteriores (FII ilíquido pode não negociar no mês)
     const isinTicker = new Map();
     for (const k of [0, 1, 2]) {
@@ -182,6 +263,11 @@ export async function gerar(hoje = new Date()) {
     const g = ultimaVersao(geral), c = ultimaVersao(comp), p = ultimaVersao(ap);
     const por = (linhas) => { const m = new Map(); for (const l of linhas) (m.get(l.CNPJ_Fundo_Classe) ?? m.set(l.CNPJ_Fundo_Classe, []).get(l.CNPJ_Fundo_Classe)).push(l); return m; };
     const compPor = por(c), apPor = por(p);
+    // imóvel: várias linhas por fundo e trimestre (uma por imóvel); fica a maior versão de cada trimestre
+    const maxVer = new Map();
+    for (const l of imovel) { const k = `${l.CNPJ_Fundo_Classe}|${l.Data_Referencia}`; maxVer.set(k, Math.max(maxVer.get(k) ?? 0, Number(l.Versao) || 0)); }
+    const imovelPor = por(imovel.filter((l) => (Number(l.Versao) || 0) === maxVer.get(`${l.CNPJ_Fundo_Classe}|${l.Data_Referencia}`)));
+    const resPor = por(ultimaVersao(resultado));
     // por CNPJ: linha mais recente do geral com ISIN
     const cad = new Map();
     for (const l of g) {
@@ -194,7 +280,7 @@ export async function gerar(hoje = new Date()) {
     for (const [cnpj, l] of cad) {
       const ticker = isinTicker.get(l.Codigo_ISIN);
       if (!ticker) continue;
-      const f = montarFii({ cnpj, nome: l.Nome_Fundo_Classe, segmentoCvm: l.Segmento_Atuacao, comp: compPor.get(cnpj) ?? [], ap: apPor.get(cnpj) ?? [] });
+      const f = montarFii({ cnpj, nome: l.Nome_Fundo_Classe, segmentoCvm: l.Segmento_Atuacao, comp: compPor.get(cnpj) ?? [], ap: apPor.get(cnpj) ?? [], imoveis: imovelPor.get(cnpj) ?? [], resultado: resPor.get(cnpj) ?? [], rendB3: proventos?.[ticker]?.soma12m ?? null });
       if (!f) continue;
       if (!ativos[ticker] || f.dataBase > ativos[ticker].dataBase) ativos[ticker] = f; // ponytail: 2 CNPJs no mesmo ticker -> o informe mais novo
     }
@@ -213,10 +299,14 @@ export function serializar(o) {
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
-  const r = await gerar();
+  // rendimentos anunciados à B3 (dados/proventos.json, gerado antes pelo orquestrador); sem ele, vale a CVM
+  let proventos = null;
+  try { proventos = JSON.parse(readFileSync(join(raiz, 'dados', 'proventos.json'), 'utf8')).ativos; } catch { console.warn('aviso: sem dados/proventos.json, rend12m vem só da CVM'); }
+  const r = await gerar(new Date(), proventos);
   mkdirSync(join(raiz, 'dados'), { recursive: true });
   writeFileSync(join(raiz, 'dados', 'fiis.json'), serializar(r));
   const v = Object.values(r.ativos);
   console.log(`FIIs com ticker: ${v.length} (fundos com ISIN no informe: ${r._stats.fundosComIsin}; tickers FII no COTAHIST: ${r._stats.tickersCotahist})`);
-  console.log(`com rend12m: ${v.filter((x) => x.rend12m != null).length}; com segmento: ${v.filter((x) => x.segmento).length}; com alavancagem: ${v.filter((x) => x.alavancagem != null).length}`);
+  console.log(`rendimento da B3: ${v.filter((x) => x.fonteRend === 'B3').length}; com rend12m: ${v.filter((x) => x.rend12m != null).length}; com segmento: ${v.filter((x) => x.segmento).length}; com alavancagem: ${v.filter((x) => x.alavancagem != null).length}`);
+  console.log(`do trimestral: ffo ${v.filter((x) => x.ffo != null).length}; vacância ${v.filter((x) => x.vacancia != null).length}; nº de imóveis ${v.filter((x) => x.nImoveis != null).length}; venda de imóveis ${v.filter((x) => x.pctVendaImoveis != null).length}`);
 }

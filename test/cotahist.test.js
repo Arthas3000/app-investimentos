@@ -31,3 +31,24 @@ test('FII (BDI 12, espécie CI com marcação) e BOVA11 (BDI 14) entram; o resto
   assert.equal(parseLinha(linha({ tipo: '00' })), null); // cabeçalho
   assert.equal(parseLinha(linha({ fechamento: 0 })), null); // sem fechamento
 });
+
+// ---------- ajuste por eventos em ações (desdobramento, grupamento, bonificação da B3) ----------
+import { ajustarEventos } from '../scripts/atualizar-precos.mjs';
+
+test('ajustarEventos: preços até a data com são divididos pelo fator; depois ficam iguais', () => {
+  const datas = [20240411, 20240412, 20240415, 20240416, 20240417];
+  const p = [4000, 4100, 4200, 2110, 2120]; // desdobramento 1:2 com data com em 15/04 (BBAS3, 2024)
+  const r = ajustarEventos(datas, p, [['2024-04-15', 2, 'DESDOBRAMENTO']]);
+  assert.deepEqual(r.precos, [2000, 2050, 2100, 2110, 2120]);
+  assert.equal(r.aplicados, 1);
+});
+
+test('ajustarEventos: eventos acumulam (grupamento 10:1 e bonificação de 5%) e fora da janela não contam', () => {
+  const datas = [20240520, 20240527, 20251226, 20251230];
+  const p = [100, 1000, 1050, 1000];
+  const r = ajustarEventos(datas, p, [['2025-12-29', 1.05, 'BONIFICACAO'], ['2024-05-24', 0.1, 'GRUPAMENTO'], ['2019-01-01', 2, 'DESDOBRAMENTO']]);
+  // 20/05/2024: ÷0,1 (grupamento) ÷1,05 (bonificação) = 952,38 -> 952; 27/05 e 26/12/2025: ÷1,05
+  assert.deepEqual(r.precos, [952, 952, 1000, 1000]);
+  assert.equal(r.aplicados, 2);
+  assert.deepEqual(ajustarEventos(datas, p, []).precos, p);
+});
