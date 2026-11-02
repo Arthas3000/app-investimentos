@@ -203,7 +203,8 @@ export function montar(root, ctx) {
 }
 
 // ---------- modal do ativo (rota #mercado/ativo/CODIGO) ----------
-export function rota(partes) {
+export function rota(partes, ctx) {
+  if (ctx) appCtx ??= ctx; // aberto de outra tela (Descobrir) antes do Mercado montar: o modal precisa do contexto
   const dlg = document.querySelector('#sheet');
   if (partes[0] !== 'ativo' || !partes[1]) { if (dlg.open) dlg.close(); return; }
   abrirAtivo(decodeURIComponent(partes[1]), dlg);
@@ -220,7 +221,7 @@ const SEGMENTO_FII = { tijolo: 'FII de tijolo', papel: 'FII de papel', hibrido: 
 
 let memoCtx = { k: [], v: null };
 // montarCtx percorre todos os ativos: refaz só quando os arquivos, a lista ou o CDI mudam
-function ctxDe(d, lista, cdi) {
+export function ctxDe(d, lista, cdi) {
   const k = [d.fundamentos.data, d.fiis.data, d.risco.data, lista, cdi];
   if (k.every((x, i) => x === memoCtx.k[i])) return memoCtx.v;
   const setores = Object.fromEntries(lista.filter((a) => a.tipo === 'acao' && a.setor).map((a) => [a.codigo, a.setor]));
@@ -230,7 +231,7 @@ function ctxDe(d, lista, cdi) {
 }
 
 // CDI anual (fração) a partir do último CDI diário do BCB; sem rede fica null e o modelo se adapta.
-async function cdiAnual() {
+export async function cdiAnual() {
   const v = (await ultimos(SERIES.cdi, 1)).data?.at(-1)?.valor;
   return v > 0 ? (1 + v / 100) ** 252 - 1 : null;
 }

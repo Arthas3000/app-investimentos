@@ -61,3 +61,10 @@ test('fumaça: PETR4, ITUB4, HGLG11 com dados reais', () => {
     assert.ok(Array.isArray(a.indicacao.motivos));
   }
 });
+
+test('analisar: sem a série de 5 anos, a faixa usa os limites de risco.json', () => {
+  const d2 = { ...dados, risco: { ...dados.risco, ativos: { ...dados.risco.ativos, AAA3: rk({ limBarato: 1100, limCaro: 2000 }) } } };
+  const a = analisar({ ticker: 'AAA3', classe: 'acao', preco: 10, dados: d2, ctx, setor: 'S' });
+  assert.ok(a.faixa.sinais.some((s) => s.id === 'percentil' && s.voto === -1));
+  assert.deepEqual(a.faixa.limites, { barato: 1100, caro: 2000 });
+});

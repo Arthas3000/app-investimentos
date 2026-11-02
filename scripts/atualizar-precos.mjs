@@ -15,6 +15,7 @@ import { pipeline } from 'node:stream/promises';
 import { createInterface } from 'node:readline';
 import { parseLinha } from './lib/cotahist.mjs';
 import { retornos, volatilidadeAnual, quedaMaxima, beta } from '../js/core/risco.js';
+import { limitesFaixa } from '../js/analise/preco.js';
 
 const URL_BASE = 'https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_A';
 const ANOS = 5;
@@ -124,7 +125,10 @@ export async function atualizarPrecos({ anoFim = new Date().getFullYear(), saida
         P[i] = ultimo;
         if (ultimo != null && ini === N) ini = i;
       }
-      ativos[ticker] = indicadores(P, V, ini, bovaP, datas.length);
+      // Preços de corte da faixa barato/normal/caro (centavos), da mesma série de precos/{TICKER}.json: o app compara o
+      // preço ao vivo com eles sem baixar o arquivo de preços de cada ativo (tela Descobrir).
+      const lim = limitesFaixa(centavos);
+      ativos[ticker] = { ...indicadores(P, V, ini, bovaP, datas.length), limBarato: lim?.barato ?? null, limCaro: lim?.caro ?? null };
     }
     for (const f of await readdir(join(saida, 'precos'))) if (f.endsWith('.json') && !gerados.has(f)) await unlink(join(saida, 'precos', f));
 

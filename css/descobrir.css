@@ -1,0 +1,38 @@
+/* Descobrir: lista de ativos na faixa barato. Só tokens de tokens.css; card, kv, badge, field, chip vêm de components.css. */
+.dsc-intro { font-size: var(--fs-sm); color: var(--muted); }
+.dsc-intro strong { color: var(--text); }
+.dsc-linha { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s2); align-items: end; }
+@media (min-width: 560px) { .dsc-linha { grid-template-columns: minmax(0, 1fr) auto; } }
+.dsc-check { display: flex; align-items: center; gap: var(--s2); min-height: 48px; font-size: var(--fs-sm); cursor: pointer; }
+.dsc-check input { width: 24px; height: 24px; flex: none; margin: 0; accent-color: var(--brand); }
+.dsc-conta { font-size: var(--fs-sm); color: var(--muted); }
+.dsc-conta:empty, #dAviso:empty { display: none; }
+#dAviso { display: grid; gap: var(--s2); }
+
+.dsc-lista { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s3); }
+.dsc-sk { height: 220px; border-radius: var(--r-lg); }
+
+.dsc { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s3); padding: var(--s4); align-content: start; }
+.dsc__top { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s3); }
+.dsc__id { display: grid; gap: 2px; min-width: 0; min-height: 44px; align-content: center; color: inherit; text-decoration: none; }
+.dsc__id strong { display: inline-flex; align-items: center; gap: var(--s2); font-size: var(--fs-md); }
+.dsc__id:hover strong { text-decoration: underline; }
+.dsc__nome { font-size: var(--fs-sm); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dsc__preco { font-weight: 700; font-size: var(--fs-lg); flex: none; }
+.dsc__selos { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.dsc__kv { margin: 0; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); }
+.dsc__kv dd { font-size: var(--fs-sm); }
+.dsc__motivos { margin: 0; padding-left: var(--s5); display: grid; gap: 2px; font-size: var(--fs-sm); color: var(--muted); }
+/* ações: uma coluna no celular, duas lado a lado a partir de 480 px; mesma largura e altura */
+.dsc__acoes { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s2); align-items: start; }
+@media (min-width: 480px) { .dsc__acoes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.dsc__acoes > .btn, .dsc__fora > summary { min-height: 44px; padding: 0 var(--s4); width: 100%; white-space: nowrap; }
+.dsc__acoes a.btn { text-decoration: none; }
+.dsc__fora { min-width: 0; }
+.dsc__fora > summary { list-style: none; }
+.dsc__fora > summary::-webkit-details-marker { display: none; }
+.dsc__fora ul { list-style: none; margin: var(--s2) 0 0; padding: var(--s1); display: grid; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); }
+.dsc__fora li a { display: flex; align-items: center; gap: var(--s2); min-height: 44px; padding: 0 var(--s3); border-radius: var(--r-sm); color: var(--text); text-decoration: none; font-size: var(--fs-sm); }
+.dsc__fora li a .ico:last-child { margin-left: auto; color: var(--muted); }
+.dsc__fora li a:hover { background: var(--surface-2); }
+@media (hover: hover) { .dsc__acoes .btn:hover { filter: brightness(1.06); } }

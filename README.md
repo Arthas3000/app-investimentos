@@ -30,7 +30,7 @@ Ibovespa é aproximado por BOVA11.
 
 ## Arquivos de `dados/`
 
-`meta.json`, `fundamentos.json` (ações), `fiis.json`, `risco.json` (volatilidade, queda máxima, beta, variações, liquidez e `saltos`) e `precos/{TICKER}.json` (`d` em AAAAMMDD, `p` em centavos). Dado ausente é `null`; nunca se inventa número.
+`meta.json`, `fundamentos.json` (ações), `fiis.json`, `risco.json` (volatilidade, queda máxima, beta, variações, liquidez, `saltos` e os preços de corte da faixa `limBarato`/`limCaro`, em centavos) e `precos/{TICKER}.json` (`d` em AAAAMMDD, `p` em centavos). Dado ausente é `null`; nunca se inventa número.
 
 A volatilidade, a queda máxima e o beta são calculados no workflow, com o mesmo `js/core/risco.js`. É uma exceção ao princípio "a matemática roda no navegador", aprovada para que a nota de estabilidade do setor não exija baixar centenas de arquivos de preço.
 
@@ -82,12 +82,14 @@ Precedência: Evitar > Atenção ao rendimento > Preço atrativo pelos números 
 ## Telas
 
 - **Home** (`#home`): saldo, ativos, "Desde a sua última visita", primeiros passos, cartão do aporte e entrada para o Seu mês. Botão "+" registra compra, venda, depósito, retirada, transferência ou provento.
-- **Carteira**: preço médio, resultado, alvo % editável, notas e selos, renda passiva (só proventos lançados), metas, concentração (HHI) e risco, e ativos acompanhados ("Só consulta").
+- **Carteira**: preço médio, resultado, alvo % editável, notas e selos, faixa de preço explicada para quem tem o ativo (barato, "chegou ao preço normal", "preço alto pelos números", com preço pago e a faixa de 5 anos), renda passiva (só proventos lançados), metas, concentração (HHI) e risco, e ativos acompanhados ("Só consulta").
 - **Mercado**: todas as ações e FIIs, com modal de análise por ativo.
 - **Simulador**: monta uma carteira e compara com Ibovespa (BOVA11), CDI e IPCA.
 - **Histórico**: movimentações com filtros, corrigir e excluir (nunca apaga; tem Desfazer), provento manual, backup.
 - **Aporte** (`#aporte`, 3 passos): valor e alvos, proposta, confirmação do que foi comprado.
 - **Seu mês** (`#seumes`): aportes, proventos, patrimônio e marcos.
+- **Descobrir** (`#descobrir`, atalho no topo da Home): ações e FIIs na faixa barato, com busca, filtro, ordenação (nota, desconto, posição no histórico) e opção de ocultar "Evitar". Cada ativo abre a análise (`#descobrir/ativo/PETR4`) ou atalhos de pesquisa externa (Google Notícias, Status Invest, Investidor10).
+- Telas fora da barra (Aporte, Seu mês, Descobrir, Ajustes) têm botão Voltar no topo.
 - **Ajustes** (engrenagem): token, frequência de cotação, aporte e lembrete, custos e lotes, backup, fontes, tema, tour e apagar dados.
 
 O estado do usuário fica no `localStorage` (`carteira.v1`, mais `aporte.cfg.v1`, `simulador.cfg.v1` e `marcos.v1`). O backup em JSON não leva o token.
@@ -98,7 +100,7 @@ T = valor atual da carteira + aporte. Necessidade do ativo = max(0, alvo% × T �
 
 ## Faixa barato, normal ou caro (`js/analise/preco.js`)
 
-Dois sinais votam −1 (barato), 0 ou +1 (caro): o percentil do preço nos últimos 5 anos do próprio ativo (até 25% barato, a partir de 75% caro) e, nas ações, a margem de segurança (≥ +15% barato, ≤ −15% caro) ou, nos FIIs, o P/VP (≤ 0,95 barato, ≥ 1,05 caro). Soma ≤ −1 é barato, ≥ +1 é caro, 0 é normal. Com um sinal só, vale ele e a tela avisa. A faixa compara o ativo com ele mesmo, não com outros ativos.
+Dois sinais votam −1 (barato), 0 ou +1 (caro): o percentil do preço (arredondado para centavos) nos últimos 5 anos do próprio ativo (até 25% barato, a partir de 75% caro) e, nas ações, a margem de segurança (≥ +15% barato, ≤ −15% caro) ou, nos FIIs, o P/VP (≤ 0,95 barato, ≥ 1,05 caro). Soma ≤ −1 é barato, ≥ +1 é caro, 0 é normal. Com um sinal só, vale ele e a tela avisa. A faixa compara o ativo com ele mesmo, não com outros ativos. Sem a série de 5 anos, o voto do percentil usa `limBarato` (maior preço com percentil ≤ 25) e `limCaro` (menor com percentil ≥ 75), calculados no workflow com a mesma função (`limitesFaixa`); o resultado é idêntico (teste com 500 casos).
 
 ## Simulador (`js/core/simulador.js`)
 
