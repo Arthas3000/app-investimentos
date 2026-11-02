@@ -1,0 +1,19 @@
+{
+ "versao": 1,
+ "geradoEm": "2026-11-02T15:12:48.453Z",
+ "fontes": {
+  "precos": {
+   "url": "https://bvmf.bmfbovespa.com.br/InstDados/SerHist/",
+   "ok": true
+  },
+  "fundamentos": {
+   "url": "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/",
+   "ok": true
+  },
+  "fiis": {
+   "url": "https://dados.cvm.gov.br/dados/FII/DOC/INF_MENSAL/",
+   "ok": true
+  }
+ },
+ "dataBasePrecos": "2026-10-30"
+}
