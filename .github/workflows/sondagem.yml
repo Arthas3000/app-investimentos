@@ -15,43 +15,38 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: B3 empresa - chaves, eventos em ações e alcance do histórico
+      - name: Resultado trimestral de KNRI11 e HGLG11, coluna a coluna
         run: |
-          for emp in BBAS ITSA MGLU PETR WEGE; do
-            q=$(printf '{"issuingCompany":"%s","language":"pt-br"}' "$emp" | base64 -w0)
-            curl -sS -m 60 -A "Mozilla/5.0" "https://sistemaswebb3-listados.b3.com.br/listedCompaniesProxy/CompanyCall/GetListedSupplementCompany/$q" > $emp.json
-            python3 - "$emp" <<'PY'
-          import json,sys
-          e=sys.argv[1]; d=json.load(open(e+'.json'))
-          d=d[0] if isinstance(d,list) else d
-          print('==',e,'chaves:',list(d.keys()))
-          cd=d.get('cashDividends') or []
-          datas=sorted(x['lastDatePrior'][-4:]+x['lastDatePrior'][3:5] for x in cd)
-          print('  cashDividends:',len(cd),'de',datas[:1],'a',datas[-1:], 'labels:',sorted({x['label'] for x in cd}))
-          for k in ('stockDividends','subscriptions'):
-              v=d.get(k) or []; print('  '+k+':',len(v)); [print('   ',x) for x in v[:6]]
+          curl -sSf -m 120 -o it.zip "https://dados.cvm.gov.br/dados/FII/DOC/INF_TRIMESTRAL/DADOS/inf_trimestral_fii_2026.zip"
+          curl -sSf -m 120 -o it25.zip "https://dados.cvm.gov.br/dados/FII/DOC/INF_TRIMESTRAL/DADOS/inf_trimestral_fii_2025.zip"
+          unzip -o -q it.zip; mkdir -p a25; unzip -o -q it25.zip -d a25
+          python3 - <<'PY'
+          import csv, io
+          def ler(p): return list(csv.DictReader(io.open(p, encoding='latin1'), delimiter=';'))
+          geral = ler('inf_trimestral_fii_geral_2026.csv')
+          alvo = {g['CNPJ_Fundo_Classe']: g['Codigo_ISIN'] for g in geral if g['Codigo_ISIN'] in ('BRKNRICTF007', 'BRHGLGCTF004')}
+          print('CNPJs:', alvo)
+          for ano, pasta in (('2025', 'a25/'), ('2026', '')):
+              res = ler(f'{pasta}inf_trimestral_fii_resultado_contabil_financeiro_{ano}.csv')
+              for cnpj in alvo:
+                  linhas = sorted((r for r in res if r['CNPJ_Fundo_Classe'] == cnpj), key=lambda r: (r['Data_Referencia'], r['Versao']))
+                  print(f'== {alvo[cnpj]} {ano}: trimestres', [r['Data_Referencia'] + ' v' + r['Versao'] for r in linhas])
+                  for col in linhas[0].keys() if linhas else []:
+                      vals = [r[col] for r in linhas]
+                      if any(v not in ('', '0') for v in vals) and col not in ('CNPJ_Fundo_Classe',):
+                          print(f'   {col}: {vals}')
+          imov = ler('inf_trimestral_fii_imovel_2026.csv')
+          for cnpj in alvo:
+              u = [r for r in imov if r['CNPJ_Fundo_Classe'] == cnpj]
+              dt = max(r['Data_Referencia'] for r in u) if u else None
+              print(f'== imóveis {alvo[cnpj]} {dt}:', len([r for r in u if r['Data_Referencia'] == dt]), 'classes', sorted({r['Classe'] for r in u}))
+              for r in [r for r in u if r['Data_Referencia'] == dt][:4]: print('   ', r['Nome_Imovel'][:40], r['Percentual_Vacancia'], r['Percentual_Inadimplencia'], r['Percentual_Receitas_FII'])
           PY
+
+      - name: B3 rendimentos de KNRI e HGLG (para conferir com a CVM)
+        run: |
+          for f in KNRI HGLG; do
+            q=$(printf '{"typeFund":7,"cnpj":"0","identifierFund":"%s"}' "$f" | base64 -w0)
+            curl -sS -m 60 -A "Mozilla/5.0" "https://sistemaswebb3-listados.b3.com.br/fundsProxy/fundsCall/GetListedSupplementFunds/$q" \
+              | python3 -c "import json,sys; d=json.load(sys.stdin); print('$f', [(x['relatedTo'], x['lastDatePrior'], x['rate'], x['isinCode']) for x in d['cashDividends'] if x['isinCode'].endswith(('CTF007','CTF004'))][:14])"
           done
-
-      - name: B3 FII - outro fundo e chaves
-        run: |
-          q=$(printf '{"typeFund":7,"cnpj":"0","identifierFund":"KNRI"}' | base64 -w0)
-          curl -sS -m 60 -A "Mozilla/5.0" "https://sistemaswebb3-listados.b3.com.br/fundsProxy/fundsCall/GetListedSupplementFunds/$q" > f.json
-          python3 -c "
-          import json; d=json.load(open('f.json')); print('chaves:',list(d.keys())); cd=d.get('cashDividends') or []
-          print('cash:',len(cd), sorted({x['lastDatePrior'][-4:] for x in cd})); print('stock:',(d.get('stockDividends') or [])[:3]); print('qtd:',d.get('quantity'))"
-
-      - name: B3 ritmo (40 requisições seguidas)
-        run: |
-          t0=$(date +%s); for emp in ABEV AZUL B3SA BBDC BRFS CMIG CPLE CSAN CSNA CYRE ELET EMBR ENEV EQTL GGBR GOAU HAPV ITUB JBSS KLBN LREN MRFG MRVE MULT NTCO PRIO RADL RAIL RDOR RENT SANB SBSP SUZB TAEE TIMS TOTS UGPA USIM VIVT VALE; do
-            q=$(printf '{"issuingCompany":"%s","language":"pt-br"}' "$emp" | base64 -w0)
-            curl -sS -m 60 -A "Mozilla/5.0" -o /dev/null -w "%{http_code} " "https://sistemaswebb3-listados.b3.com.br/listedCompaniesProxy/CompanyCall/GetListedSupplementCompany/$q"
-          done; echo; echo "segundos: $(( $(date +%s) - t0 ))"
-
-      - name: CVM dicionário do informe trimestral (resultado e imóvel)
-        run: |
-          curl -sSf -m 120 -o m.zip https://dados.cvm.gov.br/dados/FII/DOC/INF_TRIMESTRAL/META/meta_inf_trimestral_fii.zip && unzip -o -q m.zip && ls
-          for f in *.txt; do iconv -f latin1 -t utf-8 "$f" > "u_$f" 2>/dev/null || cp "$f" "u_$f"; done
-          echo "== resultado: campos de distribuição, FFO e rendimentos"; grep -h -i -B1 -A3 "Rendimento\|Distribu\|Resultado_Liquido_Total_Financeiro\|Receita_Venda_Investimento_Financeiro\|Percentual_Resultado" u_*resultado* | head -80
-          echo "== imóvel"; grep -h -i -A3 "Percentual_Vacancia\|Percentual_Receitas_FII\|Classe" u_*imovel_2* u_*imovel.* 2>/dev/null | head -40
-          ls u_*
