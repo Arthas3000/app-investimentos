@@ -1,7 +1,11 @@
 {
  "versao": 1,
- "geradoEm": "2026-11-02T15:12:48.453Z",
+ "geradoEm": "2026-11-02T18:05:45.861Z",
  "fontes": {
+  "proventos": {
+   "url": "https://sistemaswebb3-listados.b3.com.br/",
+   "ok": true
+  },
   "precos": {
    "url": "https://bvmf.bmfbovespa.com.br/InstDados/SerHist/",
    "ok": true
@@ -11,7 +15,11 @@
    "ok": true
   },
   "fiis": {
-   "url": "https://dados.cvm.gov.br/dados/FII/DOC/INF_MENSAL/",
+   "url": "https://dados.cvm.gov.br/dados/FII/DOC/",
+   "ok": true
+  },
+  "conferencia": {
+   "url": "https://apisidra.ibge.gov.br/",
    "ok": true
   }
  },
