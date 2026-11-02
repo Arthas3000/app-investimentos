@@ -15,18 +15,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: PDFs oficiais da B3 (tarifação de equities)
+      - name: Seções completas (escopo, TTA, arredondamento)
         run: |
-          which pdftotext || (sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils)
-          i=0
-          for u in \
-            "https://b3.com.br/data/files/8D/10/AA/8A/964599100A29E189AC094EA8/Tarifacao_Equities_V3_PT.pdf" \
-            "https://b3.com.br/data/files/15/32/93/72/68E289100A29E189AC094EA8/Tarifacao_Produtos_Renda_Variavel_V2_PT_.pdf" \
-            "https://www.b3.com.br/data/files/B1/A4/7D/73/B6BE7910C2881879AC094EA8/CE%20026-2025-VPC%20ALTERACOES%20NA%20POLITICA%20DE%20TARIFACAO%20DOS%20PRODUTOS%20DO%20MERCADO%20A%20VISTA%20DE%20RENDA%20VARIAVEL_PT.pdf" \
-            "https://www.b3.com.br/data/files/BF/57/61/42/EF7C7910C2881879AC094EA8/OC%20025-2025-VPC%20NOVA%20TARIFACAO%20DE%20EQUITIES%20E%20CONSOLIDACAO%20DAS%20REGRAS%20E%20POLITICA%20DE%20TARIFACAO%20DE%20PRODUTOS%20E%20DEPOSITARIA%20DE%20RENDA%20VARIAVEL_PT.pdf"; do
-            i=$((i+1)); echo "=================== DOC $i: $u"
-            curl -sSL -m 120 -A "Mozilla/5.0" -o d$i.pdf "$u" -w "HTTP %{http_code} %{size_download} bytes\n" || continue
-            pdftotext -layout d$i.pdf d$i.txt 2>/dev/null || { echo "não é PDF"; head -c 300 d$i.pdf; continue; }
-            wc -l d$i.txt
-            grep -n -i -E "vig[eê]ncia|a partir de|pessoa f[ií]sica|investidor|negocia[çc][ãa]o|liquida[çc][ãa]o|transfer[eê]ncia|TTA|day ?trade|fracion|PIS|COFINS|ADTV|0,0[0-9]+ ?%|%" d$i.txt | head -160
+          curl -sSL -m 120 -A "Mozilla/5.0" -o d1.pdf "https://b3.com.br/data/files/8D/10/AA/8A/964599100A29E189AC094EA8/Tarifacao_Equities_V3_PT.pdf"
+          pdftotext -layout d1.pdf d1.txt
+          echo "=== 1 a 1.2.5 (escopo, CCP, TTA)"; sed -n 160,410p d1.txt
+          n=$(grep -n "4.2.1 Tarifa de Transfer" d1.txt | tail -1 | cut -d: -f1); echo "=== 4.2.1 (linha $n)"; sed -n "$n,$((n+70))p" d1.txt
+          echo "=== arredondamento"; grep -n -i -B2 -A3 "arredond\|truncad\|casas decimais\|valor m[ií]nimo" d1.txt | head -60
+      - name: Valor da TTA vigente em 2026 (busca nos comunicados)
+        run: |
+          for q in "tarifa%20de%20transfer%C3%AAncia%20de%20ativos%202026" "TTA%202026"; do
+            curl -sSL -m 60 -A "Mozilla/5.0" "https://www.b3.com.br/pt_br/busca/?q=$q" -o b.html -w "busca HTTP %{http_code}\n" || true
+            grep -o 'href="[^"]*\.pdf"' b.html | head -10 || true
           done
