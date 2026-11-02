@@ -1,6 +1,6 @@
 name: Sondagem de fontes (temporário)
 
-# Ensaio do pipeline de dados no branch: gera dados/ e imprime amostras. Não commita nada. Será apagado depois.
+# Só lê e imprime no log. Será apagado depois.
 on:
   push:
     branches: ['claude/**']
@@ -11,47 +11,32 @@ permissions:
   contents: read
 
 jobs:
-  ensaio:
+  sondar:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Gerar dados
-        continue-on-error: true
-        run: node scripts/atualizar-dados.mjs
-      - name: Amostras
+      - name: WEGE na B3 (todos os proventos)
         run: |
-          ls -la dados/ && du -sh dados/precos && git diff --stat dados/ | tail -5
-          cat dados/meta.json
-          node -e "
-          const fs=require('fs'), l=(n)=>{try{return JSON.parse(fs.readFileSync('dados/'+n))}catch(e){return null}};
-          const p=l('proventos.json'), f=l('fundamentos.json'), fi=l('fiis.json'), r=l('risco.json'), c=l('conferencia.json');
-          for (const t of ['PETR4','ITUB4','BBAS3','TAEE11','MGLU3','HGLG11','KNRI11','MXRF11']) console.log(t, 'prov:', JSON.stringify(p?.ativos?.[t])?.slice(0,300));
-          for (const t of ['PETR4','ITUB4','BBAS3','WEGE3','TAEE11']) { const x=f?.ativos?.[t]; console.log(t, 'fund:', x && JSON.stringify({acoes:x.acoes,lpa12m:x.lpa12m,prov12m:x.prov12m,payout:x.payout})); }
-          for (const t of ['HGLG11','KNRI11','MXRF11','XPML11','VISC11']) { const x=fi?.ativos?.[t]; console.log(t, 'fii:', x && JSON.stringify({ffo:x.ffo,rend12m:x.rend12m,vac:x.vacancia,inad:x.inadimplencia,n:x.nImoveis,venda:x.pctVendaImoveis,tri:x.dataBaseTri,seg:x.segmento})); }
-          for (const t of ['BBAS3','MGLU3','WEGE3','PETR4']) console.log(t, 'risco:', JSON.stringify(r?.ativos?.[t]));
-          const v=Object.values(r?.ativos??{}); console.log('saltos>0:', v.filter(x=>x.saltos>0).length, 'de', v.length);
-          console.log('conferencia resumo:', JSON.stringify(c?.resumo));
-          console.log('FIIs divergentes:', Object.entries(c?.fiis??{}).filter(([,x])=>!x.ok).slice(0,15).map(([t,x])=>t+':'+x.divergentes+'/'+x.comparados+' max '+x.maxDif).join(' '));
-          console.log('ações divergentes:', Object.entries(c?.acoes??{}).filter(([,x])=>!x.ok).slice(0,15).map(([t,x])=>t+':'+x.dif).join(' '));
-          const fv=Object.values(fi?.ativos??{}); console.log('FIIs com ffo', fv.filter(x=>x.ffo!=null).length, 'vacancia', fv.filter(x=>x.vacancia!=null).length, 'de', fv.length);
-          const av=Object.values(f?.ativos??{}); console.log('ações com payout', av.filter(x=>x.payout!=null).length, 'prov12m>0', av.filter(x=>x.prov12m>0).length, 'de', av.length);
-          "
-      - name: Testes com os dados gerados
-        run: npm test 2>&1 | grep -E "^not ok|^# (pass|fail)" || true
-      - name: Análise com os dados gerados (distribuição das indicações e faixas)
+          q=$(printf '{"issuingCompany":"WEGE","language":"pt-br"}' | base64 -w0)
+          curl -sS -m 60 -A "Mozilla/5.0" "https://sistemaswebb3-listados.b3.com.br/listedCompaniesProxy/CompanyCall/GetListedSupplementCompany/$q" \
+            | python3 -c "import json,sys; d=json.load(sys.stdin)[0]; [print(x['lastDatePrior'], x['paymentDate'], x['label'], x['rate'], x['relatedTo'], x['approvedOn'], x['isinCode'], x['remarks']) for x in d['cashDividends']]"
+      - name: BTLG e BROF na B3 x CVM
         run: |
-          node --input-type=module -e "
-          import { analisar, montarCtx } from './js/analise/analisar.js';
-          import fs from 'node:fs';
-          const l=(n)=>JSON.parse(fs.readFileSync('dados/'+n));
-          const d={fundamentos:l('fundamentos.json'),fiis:l('fiis.json'),risco:l('risco.json')}; const ctx=montarCtx({...d,cdi:0.14}); const c={}, cob={acao:[],fii:[]};
-          for (const [ts,cl] of [[Object.keys(d.fundamentos.ativos),'acao'],[Object.keys(d.fiis.ativos),'fii']]) for (const t of ts) {
-            const f='dados/precos/'+t+'.json'; if(!fs.existsSync(f)) continue; const s=JSON.parse(fs.readFileSync(f));
-            const a=analisar({ticker:t,classe:cl,preco:s.p.at(-1)/100,dados:d,ctx,precos5a:s.p}); if(a.semDados) continue;
-            const k=cl+':'+a.indicacao.id; c[k]=(c[k]||0)+1; const k2=cl+':faixa:'+a.faixa.id; c[k2]=(c[k2]||0)+1; cob[cl].push(a.valor.cobertura);
-          }
-          const med=(v)=>{v.sort((a,b)=>a-b);return v[v.length>>1]}; console.log(c); console.log('cobertura mediana', med(cob.acao), med(cob.fii));"
+          for f in BTLG BROF; do
+            q=$(printf '{"typeFund":7,"cnpj":"0","identifierFund":"%s"}' "$f" | base64 -w0)
+            echo "== $f B3"
+            curl -sS -m 60 -A "Mozilla/5.0" "https://sistemaswebb3-listados.b3.com.br/fundsProxy/fundsCall/GetListedSupplementFunds/$q" \
+              | python3 -c "import json,sys; d=json.load(sys.stdin); print('qtd', d.get('quantity')); [print(x['lastDatePrior'], x['label'], x['rate'], x['relatedTo'], x['isinCode']) for x in d['cashDividends'][:10]]"
+          done
+          curl -sSf -m 120 -o m.zip https://dados.cvm.gov.br/dados/FII/DOC/INF_MENSAL/DADOS/inf_mensal_fii_2026.zip && unzip -o -q m.zip
+          python3 - <<'PY'
+          import csv, io
+          ler = lambda p: list(csv.DictReader(io.open(p, encoding='latin1'), delimiter=';'))
+          g = {x['Codigo_ISIN']: x['CNPJ_Fundo_Classe'] for x in ler('inf_mensal_fii_geral_2026.csv') if x['Codigo_ISIN'] in ('BRBTLGCTF000', 'BRBROFCTF006')}
+          print('cnpj', g)
+          comp = ler('inf_mensal_fii_complemento_2026.csv')
+          for isin, cnpj in g.items():
+              print('== CVM', isin)
+              for x in sorted((x for x in comp if x['CNPJ_Fundo_Classe'] == cnpj), key=lambda x: (x['Data_Referencia'], x['Versao']))[-8:]:
+                  print(x['Data_Referencia'], 'v' + x['Versao'], 'VPA', x['Valor_Patrimonial_Cotas'], 'DY', x['Percentual_Dividend_Yield_Mes'], 'cotas', x['Cotas_Emitidas'])
+          PY
