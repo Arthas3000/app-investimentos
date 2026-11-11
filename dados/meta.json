@@ -1,6 +1,6 @@
 {
  "versao": 1,
- "geradoEm": "2026-11-10T04:05:37.469Z",
+ "geradoEm": "2026-11-11T01:51:46.543Z",
  "fontes": {
   "proventos": {
    "url": "https://sistemaswebb3-listados.b3.com.br/",
@@ -23,5 +23,5 @@
    "ok": true
   }
  },
- "dataBasePrecos": "2026-11-09"
+ "dataBasePrecos": "2026-11-10"
 }
