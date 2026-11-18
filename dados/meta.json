@@ -1,14 +1,16 @@
 {
  "versao": 1,
- "geradoEm": "2026-11-17T04:27:41.794Z",
+ "geradoEm": "2026-11-18T03:15:30.840Z",
  "fontes": {
   "proventos": {
    "url": "https://sistemaswebb3-listados.b3.com.br/",
-   "ok": true
+   "ok": false,
+   "erro": "Command failed: node /home/runner/work/app-investimentos/app-investimentos/scripts/atualizar-proventos.mjs"
   },
   "precos": {
    "url": "https://bvmf.bmfbovespa.com.br/InstDados/SerHist/",
-   "ok": true
+   "ok": false,
+   "erro": "Command failed: node /home/runner/work/app-investimentos/app-investimentos/scripts/atualizar-precos.mjs --cache=/tmp/dados-ghXgGM"
   },
   "fundamentos": {
    "url": "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/",
@@ -16,7 +18,8 @@
   },
   "fiis": {
    "url": "https://dados.cvm.gov.br/dados/FII/DOC/",
-   "ok": true
+   "ok": false,
+   "erro": "Command failed: node /home/runner/work/app-investimentos/app-investimentos/scripts/atualizar-fiis.mjs"
   },
   "conferencia": {
    "url": "https://apisidra.ibge.gov.br/",
